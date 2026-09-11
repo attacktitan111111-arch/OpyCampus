@@ -1,0 +1,148 @@
+// Scholar — a Threads-style social platform for students & institutions
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
+  name          String
+  bio           String?
+  avatarUrl     String?
+  role          String   @default("student") // student | teacher | institution_admin | guest
+  verified      Boolean  @default(false)
+  // session helper: a single active demo user is selected via cookie "scholar_uid"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  department    String? // e.g. "Computer Science"
+
+  posts         Post[]
+  likes         Like[]
+  bookmarks     Bookmark[]
+  reposts       Repost[]
+  followsGiven  Follow[]     @relation("FollowFollower")
+  followsRecv   Follow[]     @relation("FollowFollowing")
+  memberships   InstitutionMember[]
+  notifications Notification[] @relation("NotifTo")
+  notifTrigger  Notification[] @relation("NotifActor")
+}
+
+model Institution {
+  id          String   @id @default(cuid())
+  name        String
+  handle      String   @unique
+  type        String   @default("university") // school | college | university | institute
+  bio         String?
+  logoUrl     String?
+  coverUrl    String?
+  website     String?
+  location    String?
+  verified    Boolean  @default(true)
+  isPrivate   Boolean  @default(false) // private feed only members can see
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     InstitutionMember[]
+  posts       Post[]
+  users       User[]
+}
+
+model InstitutionMember {
+  id            String   @id @default(cuid())
+  institutionId String
+  userId        String
+  role          String   @default("member") // admin | teacher | student | member
+  approved      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([institutionId, userId])
+}
+
+model Post {
+  id           String   @id @default(cuid())
+  content      String
+  images       String?  // JSON string array of image urls (comma-safe)
+  authorId     String
+  institutionId String? // null = public; set = posted inside an institution feed
+  parentId     String?  // null = top-level; set = reply
+  tags         String?  // comma separated hashtags
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  author       User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  institution  Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  parent       Post?       @relation("PostReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      Post[]      @relation("PostReplies")
+  likes        Like[]
+  bookmarks    Bookmark[]
+  reposts      Repost[]
+  notifications Notification[]
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([userId, postId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([userId, postId])
+}
+
+model Repost {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@unique([userId, postId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User @relation("FollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User @relation("FollowFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+  @@unique([followerId, followingId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // like | follow | reply | repost | mention | institution
+  toUserId  String
+  actorId   String?
+  postId    String?
+  message   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  toUser    User  @relation("NotifTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  actor     User? @relation("NotifActor", fields: [actorId], references: [id], onDelete: SetNull)
+  post      Post? @relation(fields: [postId], references: [id], onDelete: SetNull)
+}
