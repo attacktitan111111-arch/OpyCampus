@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { serializeUser } from "@/lib/serializers";
 
+const userInclude = {
+  institution: true,
+  memberships: { include: { institution: true } },
+  followsGiven: { select: { followingId: true } },
+  communityMemberships: { select: { communityId: true } },
+  _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
+};
+
 export async function GET(req: NextRequest) {
-  const me = await requireUser();
+  const me = await getCurrentUser();
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
   if (q) {
@@ -16,12 +24,7 @@ export async function GET(req: NextRequest) {
           { department: { contains: q } },
         ],
       },
-      include: {
-        institution: true,
-        memberships: { include: { institution: true } },
-        followsGiven: { select: { followingId: true } },
-        _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
-      },
+      include: userInclude,
       take: 20,
     });
     return NextResponse.json({
@@ -29,18 +32,13 @@ export async function GET(req: NextRequest) {
       isFollowing: (me?.followsGiven ?? []).map((f: any) => f.followingId),
     });
   }
-  // No query: return suggested users (not already followed, exclude self)
   const followingIds = (me?.followsGiven ?? []).map((f: any) => f.followingId);
   const exclude = [...followingIds, me?.id].filter(Boolean) as string[];
   const users = await db.user.findMany({
     where: { id: { notIn: exclude } },
-    include: {
-      institution: true,
-      memberships: { include: { institution: true } },
-      followsGiven: { select: { followingId: true } },
-      _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
-    },
+    include: userInclude,
     take: 12,
+    orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({
     users: users.map((u) => serializeUser(u)),

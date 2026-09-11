@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus, Hash, Globe, Lock, X, Loader2 } from "lucide-react";
+import { ImagePlus, Hash, Globe, Lock, X, Loader2, Video, Film } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useApp, useCreatePost, useSession, useInstitutionsSearch } from "@/lib/hooks";
+import { useApp, useCreatePost, useSession, useUploadFile, useInstitutionsSearch, useCommunitiesSearch } from "@/lib/hooks";
 import type { ComposeState } from "@/lib/store";
+import type { MediaItem } from "@/lib/hooks";
 import { UserAvatar } from "./user-avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -22,13 +23,7 @@ import {
 } from "@/components/ui/dialog";
 
 const MAX = 500;
-
-const sampleImages = [
-  "https://picsum.photos/seed/scholar-a/800/800",
-  "https://picsum.photos/seed/scholar-b/800/800",
-  "https://picsum.photos/seed/scholar-c/800/800",
-  "https://picsum.photos/seed/scholar-d/800/800",
-];
+const MAX_MEDIA = 4;
 
 export function ComposeBox() {
   const { compose, closeCompose } = useApp();
@@ -38,8 +33,7 @@ export function ComposeBox() {
         showCloseButton={false}
         className="flex max-h-[92vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-2xl border-border bg-background p-0 sm:rounded-3xl"
       >
-        {/* Remount the body each open so useState initializers run fresh */}
-        {compose.open && <ComposeBody key={compose.replyTo?.id ?? "new"} compose={compose} onClose={closeCompose} />}
+        {compose.open && <ComposeBody key={(compose.replyTo?.id ?? "new") + (compose.scope?.kind ?? "")} compose={compose} onClose={closeCompose} />}
       </DialogContent>
     </Dialog>
   );
@@ -48,15 +42,16 @@ export function ComposeBox() {
 function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () => void }) {
   const { data: session } = useSession();
   const createMut = useCreatePost();
+  const uploadMut = useUploadFile();
   const instQuery = useInstitutionsSearch("");
+  const commQuery = useCommunitiesSearch("", true);
 
-  // Initialize from the compose payload (runs once per mount — we remount on each open)
   const [text, setText] = useState(compose.prefillText ?? "");
-  const [images, setImages] = useState<string[]>([]);
-  const [institutionId, setInstitutionId] = useState<string | null>(compose.institutionId ?? null);
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [scope, setScope] = useState<ComposeState["scope"]>(compose.scope ?? null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Autofocus via callback ref (no effect needed)
   const focusRef = (el: HTMLTextAreaElement | null) => {
     textareaRef.current = el;
     if (el) {
@@ -77,36 +72,57 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
           name: session.user.institution.name,
           handle: session.user.institution.handle,
           isPrivate: session.user.institution.isPrivate,
+          kind: "institution" as const,
         },
       ]
     : [];
 
   const memberInstitutions =
     (instQuery.data?.institutions ?? [])
-      .filter((i) => i.isMember)
-      .map((i) => ({ id: i.id, name: i.name, handle: i.handle, isPrivate: i.isPrivate })) ?? [];
+      .filter((i) => i.isMember && !myInstitutions.some((m) => m.id === i.id))
+      .map((i) => ({ id: i.id, name: i.name, handle: i.handle, isPrivate: i.isPrivate, kind: "institution" as const })) ?? [];
 
-  const allInstitutions = [...myInstitutions, ...memberInstitutions];
-  const chosenInstitution = allInstitutions.find((i) => i.id === institutionId);
+  const myCommunities =
+    (commQuery.data?.communities ?? [])
+      .filter((c) => c.isMember)
+      .map((c) => ({ id: c.id, name: c.name, handle: c.handle, isPrivate: c.isPrivate, kind: "community" as const })) ?? [];
 
-  const handleAddImage = () => {
-    if (images.length >= 4) {
-      toast.message("Up to 4 images");
+  const allScopes = [...myInstitutions, ...memberInstitutions, ...myCommunities];
+  const chosenScope = allScopes.find((s) => s.id === scope?.kind && scope?.kind === s.kind && (scope as any).id === s.id)
+    ?? allScopes.find((s) => s.id === (scope as any)?.id);
+
+  const handlePickFiles = () => fileInputRef.current?.click();
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files) return;
+    const slots = MAX_MEDIA - media.length;
+    if (slots <= 0) {
+      toast.message(`Up to ${MAX_MEDIA} media items`);
       return;
     }
-    const next = sampleImages[images.length % sampleImages.length];
-    setImages((prev) => [...prev, `${next}?r=${Math.random().toString(36).slice(2, 6)}`]);
+    const toUpload = Array.from(files).slice(0, slots);
+    for (const file of toUpload) {
+      try {
+        const result = await uploadMut.mutateAsync(file);
+        setMedia((prev) => [...prev, { url: result.url, type: result.type }]);
+      } catch (e: any) {
+        toast.error(e.message || `Couldn't upload ${file.name}`);
+      }
+    }
   };
 
   const handleSubmit = () => {
-    if (!text.trim() || createMut.isPending) return;
+    if ((!text.trim() && media.length === 0) || createMut.isPending) return;
     const tags = (text.match(/#[\w]+/g) ?? []).map((t) => t.slice(1).toLowerCase());
+    const institutionId = !isReply && scope?.kind === "institution" ? scope.id : null;
+    const communityId = !isReply && scope?.kind === "community" ? scope.id : null;
     createMut.mutate(
       {
         content: text.trim(),
-        images: images.length ? images : undefined,
+        media: media.length ? media : undefined,
         tags: tags.length ? Array.from(new Set(tags)).join(",") : null,
-        institutionId: isReply ? null : institutionId,
+        institutionId,
+        communityId,
         parentId: compose.replyTo?.id ?? null,
       },
       {
@@ -120,9 +136,22 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
   };
 
   const remaining = MAX - text.length;
+  const uploading = uploadMut.isPending;
 
   return (
     <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <button
@@ -137,7 +166,7 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
         </DialogTitle>
         <Button
           onClick={handleSubmit}
-          disabled={!text.trim() || createMut.isPending}
+          disabled={(!text.trim() && media.length === 0) || createMut.isPending}
           size="sm"
           className="h-9 rounded-full bg-primary px-5 text-[13px] font-semibold text-primary-foreground disabled:opacity-40"
         >
@@ -171,20 +200,30 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, MAX))}
             placeholder={isReply ? "Write your reply…" : "What's new?"}
-            className="min-h-[160px] w-full resize-none bg-transparent text-[17px] leading-relaxed outline-none placeholder:text-muted-foreground"
+            className="min-h-[140px] w-full resize-none bg-transparent text-[17px] leading-relaxed outline-none placeholder:text-muted-foreground"
           />
 
-          {images.length > 0 && (
+          {media.length > 0 && (
             <div className="mt-2 grid grid-cols-2 gap-1.5">
-              {images.map((src, i) => (
-                <div key={i} className="relative aspect-square overflow-hidden rounded-xl border border-border">
-                  <img src={src} alt="" className="h-full w-full object-cover" />
+              {media.map((m, i) => (
+                <div key={i} className="relative aspect-square overflow-hidden rounded-xl border border-border bg-secondary">
+                  {m.type === "video" ? (
+                    <video src={m.url} className="h-full w-full object-cover" muted playsInline />
+                  ) : (
+                     
+                    <img src={m.url} alt="" className="h-full w-full object-cover" />
+                  )}
                   <button
-                    onClick={() => setImages((p) => p.filter((_, idx) => idx !== i))}
+                    onClick={() => setMedia((p) => p.filter((_, idx) => idx !== i))}
                     className="absolute right-1.5 top-1.5 rounded-full bg-background/80 p-1 backdrop-blur transition hover:bg-background"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
+                  {m.type === "video" && (
+                    <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-background/80 px-1.5 py-0.5 text-[10px] font-medium backdrop-blur">
+                      <Film className="h-3 w-3" /> Video
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -196,11 +235,12 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
       <div className="flex items-center justify-between border-t border-border px-3 py-2.5">
         <div className="flex items-center gap-0.5">
           <button
-            onClick={handleAddImage}
-            className="rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-primary"
-            aria-label="Add image"
+            onClick={handlePickFiles}
+            disabled={uploading || media.length >= MAX_MEDIA}
+            className="rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-primary disabled:opacity-40"
+            aria-label="Add image or video"
           >
-            <ImagePlus className="h-[18px] w-[18px]" />
+            {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
           </button>
           <button
             onClick={() => {
@@ -220,19 +260,19 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
             <Hash className="h-[18px] w-[18px]" />
           </button>
 
-          {!isReply && allInstitutions.length > 0 && (
+          {!isReply && allScopes.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   className={cn(
                     "ml-1 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13px] font-medium transition hover:bg-accent",
-                    chosenInstitution ? "text-foreground" : "text-muted-foreground"
+                    chosenScope ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
-                  {chosenInstitution ? (
+                  {chosenScope ? (
                     <>
-                      {chosenInstitution.isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
-                      <span className="max-w-[120px] truncate">{chosenInstitution.name}</span>
+                      {chosenScope.isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
+                      <span className="max-w-[110px] truncate">{chosenScope.name}</span>
                     </>
                   ) : (
                     <>
@@ -242,13 +282,25 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setInstitutionId(null)}>
+                <DropdownMenuItem onClick={() => setScope({ kind: "public" })}>
                   <Globe className="mr-2 h-4 w-4" /> Public timeline
                 </DropdownMenuItem>
-                {allInstitutions.map((i) => (
-                  <DropdownMenuItem key={i.id} onClick={() => setInstitutionId(i.id)}>
-                    {i.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
-                    <span className="truncate">{i.name}</span>
+                {myInstitutions.map((s) => (
+                  <DropdownMenuItem key={`i-${s.id}`} onClick={() => setScope({ kind: "institution", id: s.id })}>
+                    {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
+                    <span className="truncate">{s.name}</span>
+                  </DropdownMenuItem>
+                ))}
+                {memberInstitutions.map((s) => (
+                  <DropdownMenuItem key={`im-${s.id}`} onClick={() => setScope({ kind: "institution", id: s.id })}>
+                    {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
+                    <span className="truncate">{s.name}</span>
+                  </DropdownMenuItem>
+                ))}
+                {myCommunities.map((s) => (
+                  <DropdownMenuItem key={`c-${s.id}`} onClick={() => setScope({ kind: "community", id: s.id })}>
+                    {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
+                    <span className="truncate">{s.name}</span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -257,6 +309,9 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
         </div>
 
         <div className="flex items-center gap-2">
+          {media.length > 0 && (
+            <span className="text-[12px] text-muted-foreground">{media.length}/{MAX_MEDIA}</span>
+          )}
           {text.length > 0 && (
             <div className="relative h-5 w-5">
               <svg viewBox="0 0 24 24" className="h-5 w-5 -rotate-90">

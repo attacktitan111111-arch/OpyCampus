@@ -1,49 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowLeft, Moon, Sun, ChevronRight, UserCircle, Building2, Info, LogOut, Check } from "lucide-react";
+import { ArrowLeft, Moon, Sun, ChevronRight, UserCircle, Building2, Info, LogOut, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useApp, useSession, useSwitchUser } from "@/lib/hooks";
+import { useApp, useSession, useLogout } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
 import { LoadingState, EmptyState } from "@/components/view-helpers";
 import { useTheme } from "next-themes";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-const ACCOUNTS = [
-  "aria.chen",
-  "leo.mensah",
-  "sana.k",
-  "prof.nakamura",
-  "marco.silva",
-  "emma.l",
-  "noah.b",
-  "dr.owusu",
-  "yui.t",
-  "ravi.p",
-  "ms.fischer",
-  "jay.r",
-];
-
 export function SettingsView() {
-  const { back, nav } = useApp();
+  const { back, nav, openAuth } = useApp();
   const { data: session, isLoading } = useSession();
   const { theme, setTheme } = useTheme();
-  const switchMut = useSwitchUser();
-  const [accountOpen, setAccountOpen] = useState(false);
+  const logoutMut = useLogout();
 
   if (isLoading) return <LoadingState className="py-24" />;
   const me = session?.user;
 
-  if (!me)
+  if (!me) {
     return (
-      <EmptyState title="Not signed in" className="py-24" />
+      <div className="mx-auto w-full max-w-[640px]">
+        <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/80 px-3 py-2.5 backdrop-blur-md lg:top-0">
+          <button onClick={back} className="rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground" aria-label="Back">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-[17px] font-bold">Settings</h1>
+        </div>
+        <EmptyState
+          title="You're signed out"
+          description="Sign in to manage your profile and preferences."
+          className="py-20"
+          action={
+            <div className="flex gap-2">
+              <button onClick={() => openAuth("login")} className="rounded-full bg-primary px-5 py-2.5 text-[14px] font-semibold text-primary-foreground">
+                Sign in
+              </button>
+              <button onClick={() => openAuth("signup")} className="rounded-full border border-border px-5 py-2.5 text-[14px] font-semibold">
+                Create account
+              </button>
+            </div>
+          }
+        />
+      </div>
     );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[640px]">
@@ -100,23 +100,18 @@ export function SettingsView() {
 
       {/* Account */}
       <section className="border-b border-border">
-        <h2 className="px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Demo account</h2>
+        <h2 className="px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Account</h2>
         <button
-          onClick={() => setAccountOpen(true)}
+          onClick={() => nav({ name: "profile", username: me.username })}
           className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
         >
           <UserCircle className="h-5 w-5 text-muted-foreground" />
           <div className="flex-1">
-            <div className="text-[15px] font-medium">Switch account</div>
-            <p className="text-[13px] text-muted-foreground">View Scholar as a different student or teacher</p>
+            <div className="text-[15px] font-medium">Your profile</div>
+            <p className="text-[13px] text-muted-foreground">@{me.username}</p>
           </div>
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
-      </section>
-
-      {/* Quick links */}
-      <section className="border-b border-border">
-        <h2 className="px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Discover</h2>
         <button
           onClick={() => nav({ name: "bookmarks" })}
           className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
@@ -126,61 +121,40 @@ export function SettingsView() {
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
         <button
-          onClick={() => nav({ name: "explore" })}
+          onClick={() => nav({ name: "communities" })}
           className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
         >
-          <Info className="h-5 w-5 text-muted-foreground" />
-          <div className="flex-1 text-[15px] font-medium">Explore schools & topics</div>
+          <Users className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1 text-[15px] font-medium">Groups & communities</div>
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
       </section>
 
-      <div className="px-4 py-6">
-        <p className="text-[12px] leading-relaxed text-muted-foreground">
-          Scholar is a Threads-style social space designed for students, teachers, and institutions. Posts to a school's private feed are only visible to its members. This is a demo — no real sign-in is required.
-        </p>
+      {/* About */}
+      <section className="border-b border-border">
+        <h2 className="px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">About</h2>
+        <div className="px-4 pb-4">
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            Scholar is a social space built for students, teachers, and institutions. Share thoughts, photos and videos; follow your classmates; join your school's private feed; and start study groups and clubs. Private feeds are visible only to members.
+          </p>
+        </div>
+      </section>
+
+      {/* Sign out */}
+      <div className="px-4 py-5">
+        <button
+          onClick={() => {
+            logoutMut.mutate();
+            nav({ name: "home" });
+            toast.success("Signed out");
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-[15px] font-semibold text-destructive transition hover:bg-destructive/5"
+        >
+          <LogOut className="h-4 w-4" /> Sign out
+        </button>
       </div>
 
       <div className="h-20" />
-
-      {/* Account switcher modal */}
-      <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
-        <DialogContent showCloseButton={false} className="max-w-sm rounded-2xl border-border p-0">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <DialogTitle className="text-[15px] font-semibold">Switch demo account</DialogTitle>
-          </div>
-          <DialogDescription className="sr-only">Choose a demo account to view as</DialogDescription>
-          <div className="max-h-[60vh] overflow-y-auto scrollbar-thin">
-            {ACCOUNTS.map((u) => (
-              <button
-                key={u}
-                disabled={switchMut.isPending}
-                onClick={() => {
-                  switchMut.mutate(
-                    { username: u },
-                    {
-                      onSuccess: () => {
-                        setAccountOpen(false);
-                        nav({ name: "home" });
-                      },
-                    }
-                  );
-                }}
-                className={cn(
-                  "flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40",
-                  u === me.username && "bg-secondary/50"
-                )}
-              >
-                <UserAvatar name={u} username={u} size={36} />
-                <div className="flex-1 min-w-0">
-                  <div className="truncate text-[14px] font-medium">@{u}</div>
-                </div>
-                {u === me.username && <Check className="h-4 w-4 text-foreground" />}
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { serializeUser } from "@/lib/serializers";
 
 export async function GET() {
-  const me = await requireUser();
+  const me = await getCurrentUser();
   if (!me) return NextResponse.json({ notifications: [] });
   const notifs = await db.notification.findMany({
     where: { toUserId: me.id },
@@ -14,6 +14,7 @@ export async function GET() {
           institution: true,
           memberships: { include: { institution: true } },
           followsGiven: { select: { followingId: true } },
+          communityMemberships: { select: { communityId: true } },
           _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
         },
       },
@@ -37,7 +38,7 @@ export async function GET() {
 }
 
 export async function PATCH() {
-  const me = await requireUser();
+  const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   await db.notification.updateMany({
     where: { toUserId: me.id, read: false },

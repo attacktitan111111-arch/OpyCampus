@@ -6,6 +6,7 @@ import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
 import { RelativeTime } from "@/components/relative-time";
 import { EngagementBar } from "@/components/engagement-bar";
 import { InstitutionPill } from "@/components/institution-pill";
+import { CommunityIcon } from "@/components/custom-icons";
 import { LoadingState, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
@@ -83,20 +84,31 @@ export function PostDetailView({ postId }: { postId: string }) {
           {renderContent(post.content)}
         </div>
 
-        {post.images.length > 0 && (
-          <div className={`mt-3 grid gap-1 overflow-hidden rounded-2xl border border-border ${post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-            {post.images.map((src, i) => (
-               
-              <img key={i} src={src} alt="" className={`w-full object-cover ${post.images.length === 1 ? "max-h-[460px]" : "aspect-square"}`} />
+        {post.media.length > 0 && (
+          <div className={`mt-3 grid gap-1 overflow-hidden rounded-2xl border border-border bg-secondary/30 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+            {post.media.map((m, i) => (
+              <div key={i} className={`relative overflow-hidden bg-secondary ${post.media.length === 1 ? "max-h-[460px]" : "aspect-square"}`}>
+                {m.type === "video" ? (
+                  <video src={m.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
+                ) : (
+                  <img src={m.url} alt="" className="h-full w-full object-cover" />
+                )}
+              </div>
             ))}
           </div>
         )}
 
-        {(post.institution || post.tags.length > 0) && (
+        {(post.institution || post.community || post.tags.length > 0) && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {post.institution && (
               <button onClick={() => nav({ name: "institution", handle: post.institution!.handle })}>
                 <InstitutionPill institution={post.institution} />
+              </button>
+            )}
+            {post.community && (
+              <button onClick={() => nav({ name: "community", handle: post.community!.handle })} className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <CommunityIcon className="h-3 w-3" />
+                <span className="truncate max-w-[120px]">{post.community.name}</span>
               </button>
             )}
             {post.tags.map((t) => (

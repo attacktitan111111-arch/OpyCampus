@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
-import { Home, Compass, Plus, Heart, User as UserIcon, Bookmark, Settings as SettingsIcon, Search, ArrowLeft } from "lucide-react";
+import { Home, Plus, Heart, User as UserIcon, Bookmark, Settings as SettingsIcon, Search, ArrowLeft, Users, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useApp, useSession, useNotifications, useSwitchUser } from "@/lib/hooks";
+import { useApp, useSession, useNotifications, useLogout } from "@/lib/hooks";
 import { ScholarLogo } from "./scholar-logo";
 import { ThemeToggle } from "./theme-toggle";
 import { UserAvatar, VerifiedBadge } from "./user-avatar";
+import { SparkIcon, CommunityIcon } from "./custom-icons";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,33 +18,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ComposeBox } from "./compose-box";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AuthOverlay } from "./auth-overlay";
 
 interface NavItem {
   key: string;
   label: string;
-  icon: typeof Home;
+  icon: typeof Home | typeof SparkIcon | typeof CommunityIcon;
   view: Parameters<ReturnType<typeof useApp.getState>["nav"]>[0];
   match: (v: ReturnType<typeof useApp.getState>["view"]) => boolean;
+  customIcon?: "spark" | "community";
 }
 
 const NAV: NavItem[] = [
   { key: "home", label: "Home", icon: Home, view: { name: "home" }, match: (v) => v.name === "home" },
-  { key: "explore", label: "Explore", icon: Compass, view: { name: "explore" }, match: (v) => v.name === "explore" || v.name === "search" || v.name === "tag" },
+  { key: "explore", label: "Explore", icon: Search, view: { name: "explore" }, match: (v) => v.name === "explore" || v.name === "search" || v.name === "tag" },
+  { key: "communities", label: "Groups", icon: CommunityIcon, view: { name: "communities" }, match: (v) => v.name === "community" || v.name === "communities", customIcon: "community" },
   { key: "activity", label: "Activity", icon: Heart, view: { name: "activity" }, match: (v) => v.name === "activity" },
-  { key: "bookmarks", label: "Saved", icon: Bookmark, view: { name: "bookmarks" }, match: (v) => v.name === "bookmarks" },
   { key: "profile", label: "Profile", icon: UserIcon, view: { name: "profile", username: "__me__" }, match: (v) => v.name === "profile" },
-];
-
-const ACCOUNTS = [
-  "aria.chen",
-  "leo.mensah",
-  "sana.k",
-  "prof.nakamura",
-  "marco.silva",
-  "emma.l",
-  "noah.b",
-  "dr.owusu",
 ];
 
 function NotificationDot() {
@@ -68,7 +59,6 @@ function NavButton({
   onClick: () => void;
   avatar?: string | null;
 }) {
-  const Icon = item.icon;
   return (
     <button
       onClick={onClick}
@@ -80,8 +70,12 @@ function NavButton({
       <span className="relative">
         {item.key === "profile" && avatar ? (
           <UserAvatar name="me" avatarUrl={avatar} size={26} className={cn("ring-2", active ? "ring-foreground" : "ring-transparent")} />
+        ) : item.customIcon === "spark" ? (
+          <SparkIcon filled={active} className="transition-transform group-active:scale-90" />
+        ) : item.customIcon === "community" ? (
+          <CommunityIcon className="transition-transform group-active:scale-90" />
         ) : (
-          <Icon className={cn("h-[26px] w-[26px] transition-transform group-active:scale-90", active && "fill-foreground/10")} />
+          <item.icon className={cn("h-[26px] w-[26px] transition-transform group-active:scale-90", active && item.key !== "activity" && "fill-foreground/10")} />
         )}
         {item.key === "activity" && <NotificationDot />}
       </span>
@@ -91,16 +85,10 @@ function NavButton({
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { view, nav, back, openCompose, canBack } = useApp();
+  const { view, nav, back, openCompose, canBack, openAuth, authOpen } = useApp();
   const { data: session, isLoading } = useSession();
-  const { data: notifData } = useNotifications();
-  const switchMut = useSwitchUser();
+  const logoutMut = useLogout();
   const me = session?.user;
-
-  // Auto-mark notifications read when leaving the activity tab
-  useEffect(() => {
-    // intentionally minimal: notifications are marked read via the Activity view action
-  }, [view]);
 
   const activeItem = NAV.find((n) => n.match(view));
 
@@ -130,13 +118,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
 
-      <Button
-        onClick={() => openCompose()}
-        className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 xl:px-0"
-      >
-        <Plus className="h-5 w-5 xl:mr-1" />
-        <span className="hidden xl:inline">New post</span>
-      </Button>
+      {me ? (
+        <Button
+          onClick={() => openCompose()}
+          className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 xl:px-0"
+        >
+          <Plus className="h-5 w-5 xl:mr-1" />
+          <span className="hidden xl:inline">New post</span>
+        </Button>
+      ) : (
+        <Button
+          onClick={() => openAuth("signup")}
+          className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm xl:px-0"
+        >
+          <span className="xl:mx-auto">Get started</span>
+        </Button>
+      )}
 
       <div className="mt-auto pt-4">
         <div className="mb-1 flex justify-end px-1 lg:hidden xl:flex">
@@ -173,20 +170,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuItem onClick={() => nav({ name: "bookmarks" })}>
                 <Bookmark className="mr-2 h-4 w-4" /> Saved posts
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => nav({ name: "communities" })}>
+                <Users className="mr-2 h-4 w-4" /> Groups & communities
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-muted-foreground text-xs">Switch demo account</DropdownMenuLabel>
-              {ACCOUNTS.filter((u) => u !== me.username).map((u) => (
-                <DropdownMenuItem
-                  key={u}
-                  disabled={switchMut.isPending}
-                  onClick={() => switchMut.mutate({ username: u })}
-                >
-                  <UserIcon className="mr-2 h-4 w-4" /> @{u}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => {
+                  logoutMut.mutate();
+                  nav({ name: "home" });
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" /> Sign out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : null}
+        ) : (
+          <div className="flex flex-col gap-2 px-1">
+            <Button variant="default" className="rounded-full" onClick={() => openAuth("login")}>
+              Sign in
+            </Button>
+            <Button variant="secondary" className="rounded-full" onClick={() => openAuth("signup")}>
+              Create account
+            </Button>
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -221,8 +229,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const mobileBottom = (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-around border-t border-border bg-background/90 backdrop-blur-md lg:hidden safe-bottom">
-      {NAV.filter((n) => ["home", "explore", "activity", "profile"].includes(n.key)).map((item) => {
-        const Icon = item.icon;
+      {NAV.filter((n) => ["home", "explore", "communities", "activity", "profile"].includes(n.key)).map((item) => {
         const active = !!activeItem && item.key === activeItem.key;
         return (
           <button
@@ -234,7 +241,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
             aria-label={item.label}
           >
-            <Icon className={cn("h-[24px] w-[24px]", active && item.key !== "activity" && "fill-foreground/10")} />
+            {item.customIcon === "spark" ? (
+              <SparkIcon filled={active} className="h-[24px] w-[24px]" />
+            ) : item.customIcon === "community" ? (
+              <CommunityIcon className="h-[24px] w-[24px]" />
+            ) : (
+              <item.icon className={cn("h-[24px] w-[24px]", active && item.key !== "activity" && "fill-foreground/10")} />
+            )}
             {item.key === "activity" && <NotificationDot />}
             {item.key === "profile" && me && (
               <UserAvatar
@@ -247,13 +260,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         );
       })}
-      <button
-        onClick={() => openCompose()}
-        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition active:scale-95"
-        aria-label="Compose"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+      {me ? (
+        <button
+          onClick={() => openCompose()}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition active:scale-95"
+          aria-label="Compose"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      ) : (
+        <button
+          onClick={() => openAuth("login")}
+          className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-4 text-primary-foreground shadow-sm"
+          aria-label="Sign in"
+        >
+          <span className="text-[13px] font-semibold">Sign in</span>
+        </button>
+      )}
     </nav>
   );
 
@@ -266,6 +289,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {mobileBottom}
       </div>
       <ComposeBox />
+      <AuthOverlay />
     </div>
   );
 }

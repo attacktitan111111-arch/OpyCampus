@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, keys } from "./api";
-import { useApp } from "./store";
 import { toast } from "sonner";
 
 export interface User {
@@ -24,17 +23,24 @@ export interface User {
   } | null;
   createdAt: string;
   followingIds: string[];
+  communityIds: string[];
   _counts: { posts: number; followsGiven: number; followsRecv: number };
+}
+
+export interface MediaItem {
+  url: string;
+  type: "image" | "video";
 }
 
 export interface Post {
   id: string;
   content: string;
-  images: string[];
+  media: MediaItem[];
   tags: string[];
   createdAt: string;
   author: User;
   institution: { id: string; name: string; handle: string; isPrivate: boolean } | null;
+  community: { id: string; name: string; handle: string; isPrivate: boolean } | null;
   parent: { id: string; author: User } | null;
   liked: boolean;
   bookmarked: boolean;
@@ -54,10 +60,30 @@ export interface Institution {
   location: string | null;
   verified: boolean;
   isPrivate: boolean;
+  ownerId: string | null;
   members: { id: string; role: string; approved: boolean; user: User }[];
   isMember: boolean;
   memberRole: string | null;
+  isOwner: boolean;
   _counts: { members: number; posts: number };
+}
+
+export interface Community {
+  id: string;
+  name: string;
+  handle: string;
+  description: string;
+  iconUrl: string | null;
+  coverUrl: string | null;
+  category: string;
+  isPrivate: boolean;
+  ownerId: string;
+  isOwner: boolean;
+  isMember: boolean;
+  memberRole: string | null;
+  members: { id: string; role: string; user: User }[];
+  _counts: { members: number; posts: number };
+  createdAt: string;
 }
 
 export interface NotificationItem {
@@ -68,6 +94,8 @@ export interface NotificationItem {
   actor: User;
   post: { id: string; content: string } | null;
 }
+
+// ---------- Queries ----------
 
 export function useSession() {
   return useQuery({
@@ -80,6 +108,7 @@ export function useFeed(tab: string) {
   return useQuery({
     queryKey: keys.feed(tab),
     queryFn: () => api<{ posts: Post[]; nextCursor: string | null }>(`/api/feed?tab=${tab}`),
+    enabled: !!tab,
   });
 }
 
@@ -103,6 +132,7 @@ export function useProfile(username: string) {
   return useQuery({
     queryKey: keys.profile(username),
     queryFn: () => api<{ user: User; isFollowing: boolean; isMe: boolean }>(`/api/users/${username}`),
+    enabled: !!username,
   });
 }
 
@@ -110,6 +140,7 @@ export function useUserPosts(username: string, tab: string) {
   return useQuery({
     queryKey: keys.userPosts(username, tab),
     queryFn: () => api<{ posts: Post[] }>(`/api/users/${username}/posts?tab=${tab}`),
+    enabled: !!username,
   });
 }
 
@@ -117,7 +148,6 @@ export function useUsersSearch(q: string) {
   return useQuery({
     queryKey: keys.usersSearch(q),
     queryFn: () => api<{ users: User[]; isFollowing: string[] }>(`/api/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
-    enabled: q.length >= 0,
   });
 }
 
@@ -132,6 +162,7 @@ export function useInstitution(handle: string) {
   return useQuery({
     queryKey: keys.institution(handle),
     queryFn: () => api<{ institution: Institution }>(`/api/institutions/${handle}`),
+    enabled: !!handle,
   });
 }
 
@@ -139,6 +170,31 @@ export function useInstitutionFeed(handle: string) {
   return useQuery({
     queryKey: keys.institutionFeed(handle),
     queryFn: () => api<{ posts: Post[]; gated: boolean }>(`/api/institutions/${handle}/feed`),
+    enabled: !!handle,
+  });
+}
+
+export function useCommunitiesSearch(q: string, mine = false) {
+  return useQuery({
+    queryKey: keys.communitiesSearch(q, mine),
+    queryFn: () =>
+      api<{ communities: Community[] }>(`/api/communities${q ? `?q=${encodeURIComponent(q)}` : ""}${mine ? `${q ? "&" : "?"}mine=true` : ""}`),
+  });
+}
+
+export function useCommunity(handle: string) {
+  return useQuery({
+    queryKey: keys.community(handle),
+    queryFn: () => api<{ community: Community }>(`/api/communities/${handle}`),
+    enabled: !!handle,
+  });
+}
+
+export function useCommunityFeed(handle: string) {
+  return useQuery({
+    queryKey: keys.communityFeed(handle),
+    queryFn: () => api<{ posts: Post[]; gated: boolean }>(`/api/communities/${handle}/feed`),
+    enabled: !!handle,
   });
 }
 
@@ -166,20 +222,53 @@ export function useBookmarks() {
   });
 }
 
-// --- Mutations ---
+// ---------- Mutations ----------
 
 export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { content: string; images?: string[]; tags?: string | null; institutionId?: string | null; parentId?: string | null }) =>
+    mutationFn: (body: { content: string; media?: MediaItem[]; tags?: string | null; institutionId?: string | null; communityId?: string | null; parentId?: string | null }) =>
       api<{ post: Post }>("/api/posts", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["user-posts"] });
       qc.invalidateQueries({ queryKey: ["institution-feed"] });
+      qc.invalidateQueries({ queryKey: ["community-feed"] });
     },
   });
 }
+
+export function useUploadFile() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || "Upload failed");
+      }
+      return res.json() as Promise<{ id: string; url: string; type: "image" | "video"; mimeType: string; size: number }>;
+    },
+  });
+}
+
+function invalidateAllPosts(qc: QueryClientLike, id: string, transform: (p: Post) => Post) {
+  const update = (cacheKey: any) => {
+    const data = qc.getQueryData<any>(cacheKey);
+    if (!data) return;
+    const map = (p: Post) => (p.id === id ? transform(p) : p);
+    if (Array.isArray(data.posts)) qc.setQueryData(cacheKey, { ...data, posts: data.posts.map(map) });
+    else if (data.post) qc.setQueryData(cacheKey, { ...data, post: map(data.post) });
+    else if (Array.isArray(data.replies)) qc.setQueryData(cacheKey, { ...data, replies: data.replies.map(map) });
+  };
+  update(keys.feed("foryou"));
+  update(keys.feed("following"));
+  update(keys.feed("institution"));
+  update(keys.bookmarks);
+}
+
+type QueryClientLike = ReturnType<typeof useQueryClient>;
 
 export function useToggleLike() {
   const qc = useQueryClient();
@@ -187,26 +276,7 @@ export function useToggleLike() {
     mutationFn: ({ id, liked }: { id: string; liked: boolean }) =>
       api(`/api/posts/${id}/like`, { method: "POST" }).then(() => ({ id, liked })),
     onMutate: async ({ id, liked }) => {
-      const update = (cacheKey: any) => {
-        const data = qc.getQueryData<any>(cacheKey);
-        if (!data) return;
-        const map = (p: Post) =>
-          p.id === id
-            ? { ...p, liked: !liked, _counts: { ...p._counts, likes: p._counts.likes + (liked ? -1 : 1) } }
-            : p;
-        if (Array.isArray(data.posts)) {
-          qc.setQueryData(cacheKey, { ...data, posts: data.posts.map(map) });
-        } else if (data.post) {
-          qc.setQueryData(cacheKey, { ...data, post: map(data.post) });
-        } else if (Array.isArray(data.replies)) {
-          qc.setQueryData(cacheKey, { ...data, replies: data.replies.map(map) });
-        }
-      };
-      update(keys.feed("foryou"));
-      update(keys.feed("following"));
-      update(keys.feed("institution"));
-      update(keys.bookmarks);
-      return { id, liked };
+      invalidateAllPosts(qc, id, (p) => ({ ...p, liked: !liked, _counts: { ...p._counts, likes: p._counts.likes + (liked ? -1 : 1) } }));
     },
   });
 }
@@ -217,25 +287,9 @@ export function useToggleBookmark() {
     mutationFn: ({ id, bookmarked }: { id: string; bookmarked: boolean }) =>
       api(`/api/posts/${id}/bookmark`, { method: "POST" }).then(() => ({ id, bookmarked })),
     onMutate: async ({ id, bookmarked }) => {
-      const update = (cacheKey: any) => {
-        const data = qc.getQueryData<any>(cacheKey);
-        if (!data) return;
-        const map = (p: Post) =>
-          p.id === id
-            ? { ...p, bookmarked: !bookmarked, _counts: { ...p._counts, bookmarks: p._counts.bookmarks + (bookmarked ? -1 : 1) } }
-            : p;
-        if (Array.isArray(data.posts)) qc.setQueryData(cacheKey, { ...data, posts: data.posts.map(map) });
-        else if (data.post) qc.setQueryData(cacheKey, { ...data, post: map(data.post) });
-        else if (Array.isArray(data.replies)) qc.setQueryData(cacheKey, { ...data, replies: data.replies.map(map) });
-      };
-      update(keys.feed("foryou"));
-      update(keys.feed("following"));
-      update(keys.feed("institution"));
-      update(keys.bookmarks);
+      invalidateAllPosts(qc, id, (p) => ({ ...p, bookmarked: !bookmarked, _counts: { ...p._counts, bookmarks: p._counts.bookmarks + (bookmarked ? -1 : 1) } }));
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: keys.bookmarks });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.bookmarks }),
   });
 }
 
@@ -245,19 +299,7 @@ export function useToggleRepost() {
     mutationFn: ({ id, reposted }: { id: string; reposted: boolean }) =>
       api(`/api/posts/${id}/repost`, { method: "POST" }).then(() => ({ id, reposted })),
     onMutate: async ({ id, reposted }) => {
-      const update = (cacheKey: any) => {
-        const data = qc.getQueryData<any>(cacheKey);
-        if (!data) return;
-        const map = (p: Post) =>
-          p.id === id
-            ? { ...p, reposted: !reposted, _counts: { ...p._counts, reposts: p._counts.reposts + (reposted ? -1 : 1) } }
-            : p;
-        if (Array.isArray(data.posts)) qc.setQueryData(cacheKey, { ...data, posts: data.posts.map(map) });
-        else if (data.post) qc.setQueryData(cacheKey, { ...data, post: map(data.post) });
-      };
-      update(keys.feed("foryou"));
-      update(keys.feed("following"));
-      update(keys.feed("institution"));
+      invalidateAllPosts(qc, id, (p) => ({ ...p, reposted: !reposted, _counts: { ...p._counts, reposts: p._counts.reposts + (reposted ? -1 : 1) } }));
     },
   });
 }
@@ -287,19 +329,80 @@ export function useJoinInstitution() {
       qc.invalidateQueries({ queryKey: keys.institutionFeed(vars.handle) });
       qc.invalidateQueries({ queryKey: keys.session });
       qc.invalidateQueries({ queryKey: keys.feed("institution") });
-      toast.success(_data.member ? "Joined institution feed" : "Left institution feed");
     },
   });
 }
 
-export function useSwitchUser() {
+export function useJoinCommunity() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ username }: { username: string }) =>
-      api<{ user: User }>("/api/session", { method: "POST", body: JSON.stringify({ username }) }),
+    mutationFn: ({ handle }: { handle: string }) =>
+      api<{ member: boolean }>(`/api/communities/${handle}/join`, { method: "POST" }),
+    onSuccess: (data, vars) => {
+      qc.invalidateQueries({ queryKey: keys.community(vars.handle) });
+      qc.invalidateQueries({ queryKey: keys.communityFeed(vars.handle) });
+      qc.invalidateQueries({ queryKey: keys.session });
+      qc.invalidateQueries({ queryKey: ["communities"] });
+      toast.success(data.member ? "Joined community" : "Left community");
+    },
+  });
+}
+
+export function useCreateInstitution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; handle: string; type: string; bio?: string; location?: string; website?: string; isPrivate?: boolean; logoUrl?: string | null; coverUrl?: string | null }) =>
+      api<{ institution: Institution }>("/api/institutions", { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["institutions"] });
+      qc.invalidateQueries({ queryKey: keys.session });
+    },
+  });
+}
+
+export function useCreateCommunity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; handle: string; description?: string; category: string; isPrivate?: boolean; iconUrl?: string | null; coverUrl?: string | null }) =>
+      api<{ community: Community }>("/api/communities", { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["communities"] });
+      qc.invalidateQueries({ queryKey: keys.session });
+    },
+  });
+}
+
+export function useSignup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { email: string; username: string; name?: string; password: string; role?: "student" | "teacher" }) =>
+      api<{ user: User }>("/api/auth/signup", { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.session });
+      qc.invalidateQueries();
+    },
+  });
+}
+
+export function useLogin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { identifier: string; password: string }) =>
+      api<{ user: User }>("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.session });
+      qc.invalidateQueries();
+    },
+  });
+}
+
+export function useLogout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api("/api/auth/logout", { method: "POST" }),
     onSuccess: () => {
       qc.invalidateQueries();
-      toast.success("Switched account");
+      qc.clear();
     },
   });
 }

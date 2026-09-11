@@ -1,6 +1,10 @@
 import { db } from "../src/lib/db";
+import { hashPassword } from "../src/lib/auth";
 
-const dice = (seed: string) => `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=ffd5dc,b6e3f4,c0aede,d1f4c4,ffdfbf,c4f0ec`;
+const dice = (seed: string) =>
+  `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=ffd5dc,b6e3f4,c0aede,d1f4c4,ffdfbf,c4f0ec`;
+
+const DEMO_PASSWORD = "scholar123";
 
 const users = [
   { username: "aria.chen", name: "Aria Chen", email: "aria@uni.edu", role: "student", bio: "CS junior • building tiny things • she/her", department: "Computer Science", verified: true },
@@ -18,9 +22,16 @@ const users = [
 ];
 
 const institutions = [
-  { name: "Northbridge University", handle: "northbridge", type: "university", bio: "Public research university est. 1894. Where curiosity becomes craft.", location: "Boston, MA", website: "northbridge.edu", isPrivate: false },
-  { name: "Maplewood College", handle: "maplewood", type: "college", bio: "A liberal arts college for bold thinkers.", location: "Portland, OR", website: "maplewood.edu", isPrivate: false },
-  { name: "Greenfield High", handle: "greenfield", type: "school", bio: "Secondary school, years 7–13. Traditions worth keeping.", location: "Austin, TX", website: "greenfield.school", isPrivate: true },
+  { name: "Northbridge University", handle: "northbridge", type: "university", bio: "Public research university est. 1894. Where curiosity becomes craft.", location: "Boston, MA", website: "northbridge.edu", isPrivate: false, owner: "prof.nakamura" },
+  { name: "Maplewood College", handle: "maplewood", type: "college", bio: "A liberal arts college for bold thinkers.", location: "Portland, OR", website: "maplewood.edu", isPrivate: false, owner: "dr.owusu" },
+  { name: "Greenfield High", handle: "greenfield", type: "school", bio: "Secondary school, years 7–13. Traditions worth keeping.", location: "Austin, TX", website: "greenfield.school", isPrivate: true, owner: "ms.fischer" },
+];
+
+const communities = [
+  { name: "Algorithms Study Group", handle: "algo-study", description: "Weekly problems, low pressure, high snacks. All levels welcome.", category: "study", owner: "marco.silva", members: ["aria.chen", "leo.mensah", "ravi.p"] },
+  { name: "Design Critique Club", handle: "design-crit", description: "Show your work, get kind honest feedback. Type nerds especially welcome.", category: "club", owner: "sana.k", members: ["aria.chen", "emma.l", "yui.t"] },
+  { name: "Morning Runners", handle: "morning-runners", description: "5k before 8am, anyone? We post routes and bad jokes.", category: "hobby", owner: "leo.mensah", members: ["aria.chen", "jay.r"] },
+  { name: "CS251: Distributed Systems", handle: "cs251", description: "Course community for Prof. Nakamura's CS251. Notes, deadlines, questions.", category: "course", owner: "prof.nakamura", members: ["aria.chen", "marco.silva", "ravi.p"] },
 ];
 
 const postSeed = [
@@ -49,24 +60,28 @@ const postSeed = [
   { author: "ms.fischer", content: "Year 9 asked why the sky is blue and 40 minutes later we'd covered Rayleigh scattering, atomic spectra, and why sunsets are red. this is the job.", tags: "science,teaching" },
   { author: "aria.chen", content: "found a bug in my code that's been there for 3 weeks. it was a single missing semicolon. I have aged 3 years.", tags: "cs,debugging" },
   { author: "jay.r", content: "made a friend in the dining hall over a shared confusion about the soup of the day. college is just soup-based social networking.", tags: "life,firstyear" },
-  { author: "prof.nakamura", content: "Reminder: late submissions lose 10%/day, but curiosity never loses points. Ask the question.", tags: "cs251" },
-  { author: "sana.k", content: "color theory homework: pick two colors that 'shouldn't' work together and make them work. mine are mint and maroon. we'll see.", tags: "design,color" },
-  { author: "leo.mensah", content: "study playlist update: lofi, rain, and the distant sound of my roommate also not sleeping.", tags: "study,music" },
 ];
 
 async function main() {
-  console.log("🌱 Seeding Scholar...");
+  console.log("🌱 Seeding Scholar (production schema)...");
+  const hashed = hashPassword(DEMO_PASSWORD);
 
   // Institutions
   const instMap: Record<string, any> = {};
   for (const inst of institutions) {
     const created = await db.institution.create({
-      data: { ...inst, logoUrl: dice(inst.handle), coverUrl: `https://picsum.photos/seed/${inst.handle}-cover/1200/400` },
+      data: {
+        ...inst,
+        owner: undefined,
+        logoUrl: dice(inst.handle),
+        coverUrl: `https://picsum.photos/seed/${inst.handle}-cover/1200/400`,
+        verified: true,
+      },
     });
     instMap[inst.handle] = created;
   }
 
-  // Users — assign institutions
+  // Users
   const userMap: Record<string, any> = {};
   for (const u of users) {
     let institutionId: string | undefined;
@@ -77,6 +92,17 @@ async function main() {
     } else if (["noah.b", "ms.fischer"].includes(u.username)) {
       institutionId = instMap["greenfield"].id;
     }
+
+    // Resolve institution owner
+    const instOwnerHandle = institutions.find((i) => i.owner === u.username)?.handle;
+    if (instOwnerHandle) {
+      // link owner to institution
+      await db.institution.update({
+        where: { id: instMap[instOwnerHandle].id },
+        data: { ownerId: undefined }, // set after user create below
+      });
+    }
+
     const created = await db.user.create({
       data: {
         email: u.email,
@@ -87,6 +113,7 @@ async function main() {
         verified: u.verified,
         department: u.department,
         avatarUrl: dice(u.username),
+        password: hashed,
         institutionId,
       },
     });
@@ -100,104 +127,116 @@ async function main() {
     }
   }
 
+  // Set institution owners
+  for (const inst of institutions) {
+    const owner = userMap[inst.owner];
+    if (owner) {
+      await db.institution.update({
+        where: { id: instMap[inst.handle].id },
+        data: { ownerId: owner.id },
+      });
+    }
+  }
+
+  // Communities
+  const commMap: Record<string, any> = {};
+  for (const c of communities) {
+    const owner = userMap[c.owner];
+    const created = await db.community.create({
+      data: {
+        name: c.name,
+        handle: c.handle,
+        description: c.description,
+        category: c.category,
+        isPrivate: false,
+        iconUrl: dice(c.handle),
+        coverUrl: `https://picsum.photos/seed/${c.handle}-cover/1200/300`,
+        ownerId: owner.id,
+        members: { create: { userId: owner.id, role: "owner" } },
+      },
+    });
+    commMap[c.handle] = created;
+    // add extra members
+    for (const m of c.members) {
+      if (m === c.owner) continue;
+      await db.communityMember.create({
+        data: { communityId: created.id, userId: userMap[m].id, role: "member" },
+      });
+    }
+  }
+
   // Posts
   const postList: any[] = [];
   for (const p of postSeed) {
     const author = userMap[p.author];
-    // greenfield posts go to the private institution feed
-    const institutionId =
-      author.institutionId === instMap["greenfield"].id ? instMap["greenfield"].id : null;
+    const institutionId = author.institutionId === instMap["greenfield"].id ? instMap["greenfield"].id : null;
     const created = await db.post.create({
-      data: {
-        content: p.content,
-        tags: p.tags || null,
-        authorId: author.id,
-        institutionId,
-      },
+      data: { content: p.content, tags: p.tags || null, authorId: author.id, institutionId },
     });
     postList.push(created);
   }
+  // A community post
+  const commPost = await db.post.create({
+    data: {
+      content: "Reminder: study session Thursday 6pm, library room 204. Bring problems, bring snacks, bring yourself.",
+      tags: "cs251,study",
+      authorId: userMap["prof.nakamura"].id,
+      communityId: commMap["cs251"].id,
+    },
+  });
+  postList.unshift(commPost);
 
-  // Follows — make a small social graph
+  // Follows
   const followPairs: [string, string][] = [
-    ["aria.chen", "prof.nakamura"],
-    ["aria.chen", "sana.k"],
-    ["aria.chen", "leo.mensah"],
-    ["aria.chen", "marco.silva"],
-    ["leo.mensah", "aria.chen"],
-    ["leo.mensah", "ravi.p"],
-    ["sana.k", "aria.chen"],
-    ["sana.k", "yui.t"],
-    ["marco.silva", "aria.chen"],
-    ["marco.silva", "prof.nakamura"],
-    ["ravi.p", "aria.chen"],
-    ["ravi.p", "leo.mensah"],
-    ["emma.l", "sana.k"],
-    ["emma.l", "yui.t"],
-    ["jay.r", "aria.chen"],
-    ["jay.r", "emma.l"],
-    ["noah.b", "ms.fischer"],
-    ["yui.t", "sana.k"],
-    ["dr.owusu", "prof.nakamura"],
+    ["aria.chen", "prof.nakamura"], ["aria.chen", "sana.k"], ["aria.chen", "leo.mensah"], ["aria.chen", "marco.silva"],
+    ["leo.mensah", "aria.chen"], ["leo.mensah", "ravi.p"],
+    ["sana.k", "aria.chen"], ["sana.k", "yui.t"],
+    ["marco.silva", "aria.chen"], ["marco.silva", "prof.nakamura"],
+    ["ravi.p", "aria.chen"], ["ravi.p", "leo.mensah"],
+    ["emma.l", "sana.k"], ["emma.l", "yui.t"],
+    ["jay.r", "aria.chen"], ["jay.r", "emma.l"],
+    ["noah.b", "ms.fischer"], ["yui.t", "sana.k"], ["dr.owusu", "prof.nakamura"],
   ];
   for (const [a, b] of followPairs) {
     await db.follow.create({ data: { followerId: userMap[a].id, followingId: userMap[b].id } });
   }
 
-  // Likes — spread across posts
+  // Likes
   const likeUsernames = ["aria.chen", "leo.mensah", "sana.k", "marco.silva", "ravi.p", "emma.l", "jay.r", "yui.t", "noah.b"];
   for (let i = 0; i < postList.length; i++) {
     const post = postList[i];
-    const likers = likeUsernames
-      .map((u) => userMap[u])
-      .filter((u) => u.id !== post.authorId)
-      .slice(0, ((i * 3) % 7) + 1);
-    for (const liker of likers) {
-      await db.like.create({ data: { userId: liker.id, postId: post.id } });
-    }
+    const likers = likeUsernames.map((u) => userMap[u]).filter((u) => u.id !== post.authorId).slice(0, ((i * 3) % 7) + 1);
+    for (const liker of likers) await db.like.create({ data: { userId: liker.id, postId: post.id } });
   }
 
-  // Bookmarks — a few
-  await db.bookmark.create({ data: { userId: userMap["aria.chen"].id, postId: postList[5].id } });
-  await db.bookmark.create({ data: { userId: userMap["aria.chen"].id, postId: postList[12].id } });
-  await db.bookmark.create({ data: { userId: userMap["leo.mensah"].id, postId: postList[13].id } });
-
-  // Reposts — a couple
+  // Bookmarks + reposts
+  await db.bookmark.create({ data: { userId: userMap["aria.chen"].id, postId: postList[6].id } });
+  await db.bookmark.create({ data: { userId: userMap["aria.chen"].id, postId: postList[13].id } });
   await db.repost.create({ data: { userId: userMap["sana.k"].id, postId: postList[3].id } });
   await db.repost.create({ data: { userId: userMap["marco.silva"].id, postId: postList[0].id } });
 
-  // Replies — thread under the first post
-  const firstPost = postList[0];
+  // Replies under the first post
+  const firstPost = postList[1]; // aria's open-source PR post
   const reply1 = await db.post.create({
-    data: {
-      content: "congrats!! what was the project, if you can share?",
-      authorId: userMap["marco.silva"].id,
-      parentId: firstPost.id,
-    },
+    data: { content: "congrats!! what was the project, if you can share?", authorId: userMap["marco.silva"].id, parentId: firstPost.id },
   });
   await db.post.create({
-    data: {
-      content: "a tiny CLI tool that formats JSON nicely. the maintainer was so kind about it 🥹",
-      authorId: userMap["aria.chen"].id,
-      parentId: firstPost.id,
-    },
+    data: { content: "a tiny CLI tool that formats JSON nicely. the maintainer was so kind about it 🥹", authorId: userMap["aria.chen"].id, parentId: firstPost.id },
   });
   await db.post.create({
-    data: {
-      content: "11 minutes is iconic. celebrate accordingly.",
-      authorId: userMap["leo.mensah"].id,
-      parentId: firstPost.id,
-    },
+    data: { content: "11 minutes is iconic. celebrate accordingly.", authorId: userMap["leo.mensah"].id, parentId: firstPost.id },
   });
 
-  // Notifications for aria (the demo "you" user)
-  await db.notification.create({ data: { type: "like", toUserId: userMap["aria.chen"].id, actorId: userMap["leo.mensah"].id, postId: firstPost.id } });
-  await db.notification.create({ data: { type: "like", toUserId: userMap["aria.chen"].id, actorId: userMap["sana.k"].id, postId: firstPost.id } });
-  await db.notification.create({ data: { type: "reply", toUserId: userMap["aria.chen"].id, actorId: userMap["marco.silva"].id, postId: reply1.id } });
-  await db.notification.create({ data: { type: "follow", toUserId: userMap["aria.chen"].id, actorId: userMap["jay.r"].id } });
-  await db.notification.create({ data: { type: "repost", toUserId: userMap["aria.chen"].id, actorId: userMap["marco.silva"].id, postId: firstPost.id } });
+  // Notifications for aria
+  const ariaId = userMap["aria.chen"].id;
+  await db.notification.create({ data: { type: "like", toUserId: ariaId, actorId: userMap["leo.mensah"].id, postId: firstPost.id } });
+  await db.notification.create({ data: { type: "like", toUserId: ariaId, actorId: userMap["sana.k"].id, postId: firstPost.id } });
+  await db.notification.create({ data: { type: "reply", toUserId: ariaId, actorId: userMap["marco.silva"].id, postId: reply1.id } });
+  await db.notification.create({ data: { type: "follow", toUserId: ariaId, actorId: userMap["jay.r"].id } });
+  await db.notification.create({ data: { type: "repost", toUserId: ariaId, actorId: userMap["marco.silva"].id, postId: firstPost.id } });
 
-  console.log("✅ Seeded:", users.length, "users,", institutions.length, "institutions,", postList.length + 4, "posts");
+  console.log(`✅ Seeded: ${users.length} users, ${institutions.length} institutions, ${communities.length} communities, ${postList.length + 3} posts`);
+  console.log(`   Demo password for all seeded accounts: "${DEMO_PASSWORD}"`);
 }
 
 main()

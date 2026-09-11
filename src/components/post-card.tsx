@@ -9,6 +9,7 @@ import { UserAvatar, VerifiedBadge } from "./user-avatar";
 import { RelativeTime } from "./relative-time";
 import { EngagementBar } from "./engagement-bar";
 import { InstitutionPill } from "./institution-pill";
+import { CommunityIcon } from "./custom-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,8 +145,8 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
             </div>
           </div>
 
-          {/* Replying to / institution context */}
-          {(post.institution || post.parent) && (
+          {/* Replying to / context */}
+          {(post.institution || post.community || post.parent) && (
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               {post.parent && (
                 <button
@@ -163,6 +164,18 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
                   <InstitutionPill institution={post.institution} />
                 </button>
               )}
+              {post.community && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nav({ name: "community", handle: post.community!.handle });
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary"
+                >
+                  <CommunityIcon className="h-3 w-3" />
+                  <span className="truncate max-w-[120px]">{post.community.name}</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -171,26 +184,33 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
             {renderContent(post.content)}
           </div>
 
-          {/* Images */}
-          {post.images.length > 0 && (
+          {/* Media (images + videos) */}
+          {post.media.length > 0 && (
             <div
               className={cn(
-                "mt-2.5 grid gap-1 overflow-hidden rounded-2xl border border-border",
-                post.images.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                "mt-2.5 grid gap-1 overflow-hidden rounded-2xl border border-border bg-secondary/30",
+                post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"
               )}
             >
-              {post.images.slice(0, 4).map((src, i) => (
-                 
-                <img
-                  key={i}
-                  src={src}
-                  alt=""
-                  loading="lazy"
-                  className={cn(
-                    "w-full object-cover",
-                    post.images.length === 1 ? "max-h-[460px]" : "aspect-square"
+              {post.media.slice(0, 4).map((m, i) => (
+                <div key={i} className={cn("relative overflow-hidden bg-secondary", post.media.length === 1 ? "max-h-[460px]" : "aspect-square")}>
+                  {m.type === "video" ? (
+                    <video
+                      src={m.url}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={m.url}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
                   )}
-                />
+                </div>
               ))}
             </div>
           )}

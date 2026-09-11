@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, TrendingUp, Hash, X, Sparkles } from "lucide-react";
+import { Search, TrendingUp, Hash, X, Sparkles, Building2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useExplore, useUsersSearch, useInstitutionsSearch } from "@/lib/hooks";
 import { UserCard } from "@/components/user-card";
@@ -78,6 +78,7 @@ function ExploreHome({
   loading: boolean;
   onTag: (t: string) => void;
 }) {
+  const { nav } = useApp();
   return (
     <div className="animate-fade-in">
       {loading ? (
@@ -106,6 +107,38 @@ function ExploreHome({
                     <span className="text-muted-foreground">· {t.count}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Quick access */}
+          <section className="border-b border-border">
+            <div className="px-4 py-3">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => nav({ name: "institutions" })}
+                  className="flex flex-col gap-2 rounded-2xl border border-border bg-secondary/30 p-4 text-left transition hover:bg-secondary"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-semibold">Schools</p>
+                    <p className="text-[13px] text-muted-foreground">Find or add your school</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => nav({ name: "communities" })}
+                  className="flex flex-col gap-2 rounded-2xl border border-border bg-secondary/30 p-4 text-left transition hover:bg-secondary"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-semibold">Groups</p>
+                    <p className="text-[13px] text-muted-foreground">Study groups & clubs</p>
+                  </div>
+                </button>
               </div>
             </div>
           </section>

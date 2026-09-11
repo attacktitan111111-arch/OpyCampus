@@ -1,26 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { serializePost, serializeUser } from "@/lib/serializers";
+import { postInclude } from "@/lib/post-include";
 
-const postInclude = {
-  author: {
-    include: {
-      institution: true,
-      followsGiven: { select: { followingId: true } },
-      _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
-    },
-  },
-  institution: { select: { id: true, name: true, handle: true, isPrivate: true } },
-  parent: { include: { author: { include: { institution: true } } } },
-  likes: { select: { userId: true } },
-  bookmarks: { select: { userId: true } },
-  reposts: { select: { userId: true } },
-  _count: { select: { likes: true, bookmarks: true, reposts: true, replies: true } },
+const userInclude = {
+  institution: true,
+  memberships: { include: { institution: true } },
+  followsGiven: { select: { followingId: true } },
+  communityMemberships: { select: { communityId: true } },
+  _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
 };
 
 export async function GET(req: NextRequest) {
-  const me = await requireUser();
+  const me = await getCurrentUser();
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
 
@@ -48,13 +41,9 @@ export async function GET(req: NextRequest) {
   const exclude = [...followingIds, me?.id].filter(Boolean) as string[];
   const suggestedUsers = await db.user.findMany({
     where: { id: { notIn: exclude } },
-    include: {
-      institution: true,
-      memberships: { include: { institution: true } },
-      followsGiven: { select: { followingId: true } },
-      _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
-    },
+    include: userInclude,
     take: 6,
+    orderBy: { createdAt: "desc" },
   });
 
   let matchedPosts: any[] = [];

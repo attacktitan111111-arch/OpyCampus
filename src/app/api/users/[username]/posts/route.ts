@@ -1,26 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { serializePost } from "@/lib/serializers";
-
-const include = {
-  author: {
-    include: {
-      institution: true,
-      followsGiven: { select: { followingId: true } },
-      _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
-    },
-  },
-  institution: { select: { id: true, name: true, handle: true, isPrivate: true } },
-  parent: { include: { author: { include: { institution: true } } } },
-  likes: { select: { userId: true } },
-  bookmarks: { select: { userId: true } },
-  reposts: { select: { userId: true } },
-  _count: { select: { likes: true, bookmarks: true, reposts: true, replies: true } },
-};
+import { postInclude } from "@/lib/post-include";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ username: string }> }) {
-  const me = await requireUser();
+  const me = await getCurrentUser();
   const { username } = await ctx.params;
   const { searchParams } = new URL(req.url);
   const tab = searchParams.get("tab") ?? "posts"; // posts | replies | likes
@@ -40,7 +25,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
     const ids = likes.map((l) => l.postId);
     const posts = await db.post.findMany({
       where: { id: { in: ids } },
-      include,
+      include: postInclude,
       orderBy: { createdAt: "desc" },
       take: limit,
     });
@@ -51,10 +36,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ username: s
 
   const posts = await db.post.findMany({
     where,
-    include,
+    include: postInclude,
     orderBy: { createdAt: "desc" },
     take: limit,
   });
 
-  return NextResponse.json({ posts: posts.map((p) => serializePost(p, me?.id)) });
+  return NextResponse.json({ posts: posts.map((p) => serializePost(p, me.id)) });
 }

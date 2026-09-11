@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Users, School, PenSquare } from "lucide-react";
+import { Users, School, PenSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useFeed, useSession } from "@/lib/hooks";
 import { PostCard } from "@/components/post-card";
 import { LoadingState, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
+import { SparkIcon } from "@/components/custom-icons";
 
 const TABS = [
-  { key: "foryou", label: "For you", icon: Sparkles },
-  { key: "following", label: "Following", icon: Users },
-  { key: "institution", label: "My School", icon: School },
+  { key: "foryou", label: "For you", renderIcon: (active: boolean) => <SparkIcon filled={active} className="h-4 w-4 lg:hidden" /> },
+  { key: "following", label: "Following", renderIcon: () => <Users className="h-4 w-4 lg:hidden" /> },
+  { key: "institution", label: "My School", renderIcon: () => <School className="h-4 w-4 lg:hidden" /> },
 ] as const;
 
 export function HomeFeed() {
@@ -29,7 +30,6 @@ export function HomeFeed() {
       <div className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-md lg:top-0">
         <div className="flex">
           {TABS.map((t) => {
-            const Icon = t.icon;
             const active = tab === t.key;
             const disabled = t.key === "institution" && !hasInstitution;
             return (
@@ -43,7 +43,7 @@ export function HomeFeed() {
                   disabled && "opacity-40"
                 )}
               >
-                <Icon className="h-4 w-4 lg:hidden" />
+                {t.renderIcon(active)}
                 <span>{t.label}</span>
                 {active && (
                   <span className="absolute inset-x-0 -bottom-px mx-auto h-[3px] w-12 rounded-full bg-primary" />

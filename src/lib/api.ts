@@ -12,7 +12,14 @@ export async function api<T = any>(path: string, init?: RequestInit): Promise<T>
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(txt || `request failed: ${res.status}`);
+    let message = txt || `request failed: ${res.status}`;
+    try {
+      const j = JSON.parse(txt);
+      if (j?.error) message = j.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
   }
   return res.json() as Promise<T>;
 }
@@ -28,6 +35,9 @@ export const keys = {
   institutionsSearch: (q: string) => ["institutions", q] as const,
   institution: (handle: string) => ["institution", handle] as const,
   institutionFeed: (handle: string) => ["institution-feed", handle] as const,
+  communitiesSearch: (q: string, mine: boolean) => ["communities", q, mine ? "mine" : "all"] as const,
+  community: (handle: string) => ["community", handle] as const,
+  communityFeed: (handle: string) => ["community-feed", handle] as const,
   notifications: ["notifications"] as const,
   explore: (q: string) => ["explore", q] as const,
   bookmarks: ["bookmarks"] as const,

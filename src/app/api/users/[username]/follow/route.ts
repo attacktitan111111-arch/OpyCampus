@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 
 export async function POST(_req: NextRequest, ctx: { params: Promise<{ username: string }> }) {
-  const me = await requireUser();
-  if (!me) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ error: "Sign in" }, { status: 401 });
   const { username } = await ctx.params;
   const target = await db.user.findUnique({ where: { username }, select: { id: true } });
   if (!target) return NextResponse.json({ error: "not found" }, { status: 404 });

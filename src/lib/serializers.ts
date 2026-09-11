@@ -1,5 +1,11 @@
 // Shared serializers to shape Prisma models into flat JSON for the client.
 
+export interface MediaItem {
+  url: string;
+  type: "image" | "video";
+  poster?: string;
+}
+
 export function serializeUser(u: any) {
   if (!u) return null;
   return {
@@ -23,6 +29,7 @@ export function serializeUser(u: any) {
       : null,
     createdAt: u.createdAt,
     followingIds: u.followsGiven ? u.followsGiven.map((f: any) => f.followingId) : [],
+    communityIds: u.communityMemberships ? u.communityMemberships.map((m: any) => m.communityId) : [],
     _counts: {
       posts: u._count?.posts ?? 0,
       followsGiven: u._count?.followsGiven ?? 0,
@@ -45,6 +52,7 @@ export function serializeInstitution(i: any, currentUserId?: string) {
     location: i.location ?? null,
     verified: i.verified,
     isPrivate: i.isPrivate,
+    ownerId: i.ownerId ?? null,
     members: (i.members ?? []).map((m: any) => ({
       id: m.id,
       role: m.role,
@@ -57,6 +65,7 @@ export function serializeInstitution(i: any, currentUserId?: string) {
     memberRole: currentUserId
       ? (i.members ?? []).find((m: any) => m.userId === currentUserId)?.role ?? null
       : null,
+    isOwner: currentUserId ? i.ownerId === currentUserId : false,
     _counts: {
       members: i._count?.members ?? (i.members?.length ?? 0),
       posts: i._count?.posts ?? 0,
@@ -64,12 +73,67 @@ export function serializeInstitution(i: any, currentUserId?: string) {
   };
 }
 
+export function serializeCommunity(c: any, currentUserId?: string) {
+  if (!c) return null;
+  return {
+    id: c.id,
+    name: c.name,
+    handle: c.handle,
+    description: c.description ?? "",
+    iconUrl: c.iconUrl ?? null,
+    coverUrl: c.coverUrl ?? null,
+    category: c.category,
+    isPrivate: c.isPrivate,
+    ownerId: c.ownerId,
+    isOwner: currentUserId ? c.ownerId === currentUserId : false,
+    isMember: currentUserId
+      ? (c.members ?? []).some((m: any) => m.userId === currentUserId)
+      : false,
+    memberRole: currentUserId
+      ? (c.members ?? []).find((m: any) => m.userId === currentUserId)?.role ?? null
+      : null,
+    members: (c.members ?? []).map((m: any) => ({
+      id: m.id,
+      role: m.role,
+      user: serializeUser(m.user),
+    })),
+    _counts: {
+      members: c._count?.members ?? (c.members?.length ?? 0),
+      posts: c._count?.posts ?? 0,
+    },
+    createdAt: c.createdAt,
+  };
+}
+
+function parseMedia(raw: any): MediaItem[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .map((m: any) => {
+        if (typeof m === "string") {
+          // backwards-compat: plain URL string → image
+          return { url: m, type: "image" as const };
+        }
+        return {
+          url: m.url,
+          type: m.type === "video" ? "video" : "image",
+          poster: m.poster ?? undefined,
+        };
+      })
+      .filter((m: MediaItem) => m.url);
+  } catch {
+    return [];
+  }
+}
+
 export function serializePost(p: any, currentUserId?: string) {
   if (!p) return null;
   return {
     id: p.id,
     content: p.content,
-    images: p.images ? JSON.parse(p.images) : [],
+    media: parseMedia(p.media),
     tags: p.tags ? p.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
     createdAt: p.createdAt,
     author: serializeUser(p.author),
@@ -79,6 +143,14 @@ export function serializePost(p: any, currentUserId?: string) {
           name: p.institution.name,
           handle: p.institution.handle,
           isPrivate: p.institution.isPrivate,
+        }
+      : null,
+    community: p.community
+      ? {
+          id: p.community.id,
+          name: p.community.name,
+          handle: p.community.handle,
+          isPrivate: p.community.isPrivate,
         }
       : null,
     parent: p.parent ? { id: p.parent.id, author: serializeUser(p.parent.author) } : null,

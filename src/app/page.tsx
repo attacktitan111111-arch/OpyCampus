@@ -8,10 +8,15 @@ import { ActivityView } from "@/views/activity-view";
 import { ProfileView } from "@/views/profile-view";
 import { PostDetailView } from "@/views/post-detail-view";
 import { InstitutionView } from "@/views/institution-view";
+import { CommunityView } from "@/views/community-view";
+import { CommunitiesView } from "@/views/communities-view";
+import { InstitutionsView } from "@/views/institutions-view";
 import { BookmarksView } from "@/views/bookmarks-view";
 import { TagView } from "@/views/tag-view";
 import { SettingsView } from "@/views/settings-view";
-import { LoadingState } from "@/components/view-helpers";
+import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { Button } from "@/components/ui/button";
+import { GraduationCap } from "lucide-react";
 
 function CurrentView() {
   const { view } = useApp();
@@ -30,6 +35,12 @@ function CurrentView() {
       return <PostDetailView postId={view.postId} />;
     case "institution":
       return <InstitutionView handle={view.handle} />;
+    case "community":
+      return <CommunityView handle={view.handle} />;
+    case "communities":
+      return <CommunitiesView />;
+    case "institutions":
+      return <InstitutionsView />;
     case "bookmarks":
       return <BookmarksView />;
     case "tag":
@@ -41,11 +52,47 @@ function CurrentView() {
   }
 }
 
+// Views that are safe to browse while signed out
+const PUBLIC_VIEWS = new Set(["explore", "search", "tag", "institutions", "communities", "community", "institution"]);
+
 export default function Page() {
-  const { isLoading } = useSession();
+  const { data: session, isLoading } = useSession();
+  const { view, openAuth } = useApp();
+  const me = session?.user;
+
+  if (isLoading) {
+    return (
+      <AppShell>
+        <LoadingState className="py-24" />
+      </AppShell>
+    );
+  }
+
+  // Signed-out gating: most views require auth
+  if (!me && !PUBLIC_VIEWS.has(view.name)) {
+    return (
+      <AppShell>
+        <div className="mx-auto w-full max-w-[640px]">
+          <EmptyState
+            icon={GraduationCap}
+            title="Sign in to Scholar"
+            description="Join your school's community, post, reply, and connect with classmates and teachers."
+            className="py-24"
+            action={
+              <div className="flex gap-2">
+                <Button className="rounded-full" onClick={() => openAuth("login")}>Sign in</Button>
+                <Button variant="secondary" className="rounded-full" onClick={() => openAuth("signup")}>Create account</Button>
+              </div>
+            }
+          />
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
-      {isLoading ? <LoadingState className="py-24" /> : <CurrentView />}
+      <CurrentView />
     </AppShell>
   );
 }

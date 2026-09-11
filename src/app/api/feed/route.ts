@@ -1,26 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { serializePost } from "@/lib/serializers";
-
-const include = {
-  author: {
-    include: {
-      institution: true,
-      followsGiven: { select: { followingId: true } },
-      _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
-    },
-  },
-  institution: { select: { id: true, name: true, handle: true, isPrivate: true } },
-  parent: { include: { author: { include: { institution: true } } } },
-  likes: { select: { userId: true } },
-  bookmarks: { select: { userId: true } },
-  reposts: { select: { userId: true } },
-  _count: { select: { likes: true, bookmarks: true, reposts: true, replies: true } },
-};
+import { postInclude } from "@/lib/post-include";
 
 export async function GET(req: NextRequest) {
-  const me = await requireUser();
+  const me = await getCurrentUser();
   if (!me) return NextResponse.json({ posts: [] });
   const { searchParams } = new URL(req.url);
   const tab = searchParams.get("tab") ?? "foryou"; // foryou | following | institution
@@ -41,17 +26,19 @@ export async function GET(req: NextRequest) {
     }
     where.institutionId = { in: myInstIds };
   } else {
-    // foryou: public posts (no institution) OR institutions user is a member of
+    // foryou: public posts OR institutions user is a member of OR communities they're in
     const myInstIds = me.memberships.map((m) => m.institutionId);
+    const myCommIds = me.communityMemberships.map((m) => m.communityId);
     where.OR = [
-      { institutionId: null },
+      { institutionId: null, communityId: null },
       { institutionId: { in: myInstIds } },
+      { communityId: { in: myCommIds } },
     ];
   }
 
   const posts = await db.post.findMany({
     where,
-    include,
+    include: postInclude,
     orderBy: { createdAt: "desc" },
     take: limit + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
