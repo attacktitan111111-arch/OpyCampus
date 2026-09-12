@@ -4,7 +4,15 @@ import { cn } from "@/lib/utils";
 import { BadgeCheck } from "lucide-react";
 
 export function VerifiedBadge({ className }: { className?: string }) {
-  return <BadgeCheck className={cn("h-3.5 w-3.5 fill-primary text-primary-foreground inline-block shrink-0", className)} aria-label="Verified" />;
+  return (
+    <BadgeCheck
+      className={cn(
+        "inline-block h-3.5 w-3.5 shrink-0 fill-primary text-primary-foreground",
+        className
+      )}
+      aria-label="Verified"
+    />
+  );
 }
 
 export function UserAvatar({
@@ -46,17 +54,24 @@ export function UserAvatar({
       onClick={onClick}
       style={{ width: size, height: size }}
       className={cn(
-        "relative shrink-0 rounded-full overflow-hidden bg-gradient-to-br select-none",
+        "relative shrink-0 overflow-hidden rounded-full bg-gradient-to-br select-none",
         grad,
-        onClick && "cursor-pointer tap-highlight-none",
+        onClick && "cursor-pointer tap-highlight-none transition-transform active:scale-[0.97]",
         className
       )}
     >
       {avatarUrl ? (
-         
-        <img src={avatarUrl} alt={name} className="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={avatarUrl}
+          alt={name}
+          className="pointer-events-none h-full w-full object-cover"
+          loading="lazy"
+        />
       ) : (
-        <div className="flex h-full w-full items-center justify-center font-semibold text-white" style={{ fontSize: size * 0.36 }}>
+        <div
+          className="flex h-full w-full items-center justify-center font-semibold text-white"
+          style={{ fontSize: Math.max(11, size * 0.36) }}
+        >
           {initials}
         </div>
       )}

@@ -60,11 +60,11 @@ export function PostDetailView({ postId }: { postId: string }) {
   return (
     <div className="mx-auto w-full max-w-[640px]">
       {/* Header */}
-      <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/80 px-3 py-2.5 backdrop-blur-md lg:top-0">
-        <button onClick={back} className="rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground" aria-label="Back">
+      <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+        <button onClick={back} className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-[17px] font-bold">Post</h1>
+        <h1 className="text-[15px] font-semibold">Post</h1>
       </div>
 
       {/* Main post */}
@@ -80,7 +80,7 @@ export function PostDetailView({ postId }: { postId: string }) {
           </div>
         </div>
 
-        <div className="mt-3 whitespace-pre-wrap break-words text-[17px] leading-relaxed text-foreground">
+        <div className="mt-3 whitespace-pre-wrap break-words text-[17px] leading-[1.55] text-foreground text-pretty">
           {renderContent(post.content)}
         </div>
 
@@ -108,7 +108,7 @@ export function PostDetailView({ postId }: { postId: string }) {
             {post.community && (
               <button onClick={() => nav({ name: "community", handle: post.community!.handle })} className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 <CommunityIcon className="h-3 w-3" />
-                <span className="truncate max-w-[120px]">{post.community.name}</span>
+                <span className="max-w-[120px] truncate">{post.community.name}</span>
               </button>
             )}
             {post.tags.map((t) => (
@@ -123,11 +123,11 @@ export function PostDetailView({ postId }: { postId: string }) {
           </div>
         )}
 
-        <div className="mt-3 text-[14px] text-muted-foreground">
+        <div className="mt-3 text-[13px] text-muted-foreground">
           <RelativeTime date={post.createdAt} /> · <span>{post._counts.likes + post._counts.reposts + post._counts.replies} interactions</span>
         </div>
 
-        <div className="mt-3 flex items-center justify-between border-y border-border py-1">
+        <div className="mt-2 -ml-2.5 border-y border-border py-1.5">
           <EngagementBar
             post={post}
             onReply={() =>
@@ -140,14 +140,14 @@ export function PostDetailView({ postId }: { postId: string }) {
       </article>
 
       {/* Reply composer trigger */}
-      <div className="border-b border-border px-4 py-3">
+      <div className="border-b border-border px-4 py-3 sm:px-5">
         <button
           onClick={() =>
             openCompose({
               replyTo: { id: post.id, authorName: post.author.name, authorUsername: post.author.username },
             })
           }
-          className="flex w-full items-center gap-3 rounded-full border border-border bg-secondary/40 px-4 py-2.5 text-left text-muted-foreground transition hover:bg-secondary"
+          className="flex w-full items-center gap-3 rounded-full border border-border bg-secondary/40 px-4 py-2.5 text-left text-muted-foreground transition hover:bg-secondary hover:border-foreground/20"
         >
           <MessageCircle className="h-4 w-4" />
           <span>Reply to @{post.author.username}…</span>
@@ -156,7 +156,7 @@ export function PostDetailView({ postId }: { postId: string }) {
 
       {/* Replies */}
       <div>
-        <h2 className="px-4 py-3 text-[15px] font-semibold">Replies</h2>
+        <h2 className="px-4 py-3 text-[15px] font-semibold sm:px-5">Replies</h2>
         {(repliesData?.replies ?? []).length === 0 ? (
           <EmptyState
             icon={MessageCircle}
@@ -186,17 +186,17 @@ export function PostDetailView({ postId }: { postId: string }) {
                         </button>
                         <span className="text-muted-foreground">@{r.author.username}</span>
                         <span className="text-muted-foreground">·</span>
-                        <span className="text-muted-foreground text-[13px] hover:underline">
+                        <span className="text-[13px] text-muted-foreground hover:underline">
                           <RelativeTime date={r.createdAt} />
                         </span>
                         {isMe && (
                           <span className="ml-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">you</span>
                         )}
                       </div>
-                      <div className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+                      <div className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-[1.55] text-pretty">
                         {renderContent(r.content)}
                       </div>
-                      <div className="mt-1.5">
+                      <div className="mt-1.5 -ml-2.5">
                         <EngagementBar
                           post={r}
                           onReply={() =>

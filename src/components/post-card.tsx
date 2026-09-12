@@ -78,7 +78,7 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
   return (
     <article
       onClick={openPost}
-      className="group relative cursor-pointer px-4 py-3 transition-colors hover:bg-muted/40 sm:px-5 sm:py-3.5 animate-fade-up"
+      className="group relative cursor-pointer px-4 py-3 transition-colors hover:bg-muted/40 sm:px-5 sm:py-3.5 animate-fade-up tap-highlight-none"
     >
       <div className="flex gap-3">
         {/* Avatar + thread line */}
@@ -99,14 +99,14 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
           <div className="flex items-center gap-1.5 text-[15px] leading-tight">
             <button
               onClick={onAuthorClick}
-              className="flex items-center gap-1 min-w-0 font-semibold hover:underline truncate"
+              className="flex min-w-0 items-center gap-1 font-semibold hover:underline"
             >
               <span className="truncate">{post.author.name}</span>
               {post.author.verified && <VerifiedBadge className="h-4 w-4 text-primary" />}
             </button>
-            <span className="text-muted-foreground shrink-0">@{post.author.username}</span>
-            <span className="text-muted-foreground shrink-0">·</span>
-            <span className="text-muted-foreground shrink-0 text-sm hover:underline">
+            <span className="shrink-0 text-muted-foreground">@{post.author.username}</span>
+            <span className="shrink-0 text-muted-foreground">·</span>
+            <span className="shrink-0 text-[13px] text-muted-foreground hover:underline">
               <RelativeTime date={post.createdAt} />
             </span>
 
@@ -115,7 +115,7 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
                 <DropdownMenuTrigger asChild>
                   <button
                     onClick={(e) => e.stopPropagation()}
-                    className="rounded-full p-1.5 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100"
+                    className="rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 lg:data-[state=open]:opacity-100"
                     aria-label="Post options"
                   >
                     <MoreHorizontal className="h-4 w-4" />
@@ -147,7 +147,7 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
 
           {/* Replying to / context */}
           {(post.institution || post.community || post.parent) && (
-            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-muted-foreground">
               {post.parent && (
                 <button
                   onClick={(e) => {
@@ -173,14 +173,14 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
                   className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/70 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-secondary"
                 >
                   <CommunityIcon className="h-3 w-3" />
-                  <span className="truncate max-w-[120px]">{post.community.name}</span>
+                  <span className="max-w-[120px] truncate">{post.community.name}</span>
                 </button>
               )}
             </div>
           )}
 
           {/* Content */}
-          <div className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-foreground">
+          <div className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-[1.55] text-foreground text-pretty">
             {renderContent(post.content)}
           </div>
 
@@ -234,7 +234,7 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
           )}
 
           {/* Engagement */}
-          <div className="mt-2 -ml-1.5">
+          <div className="mt-2.5 -ml-2.5">
             <EngagementBar post={post} onReply={onReply} />
           </div>
         </div>

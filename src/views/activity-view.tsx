@@ -54,8 +54,8 @@ export function ActivityView() {
 
   return (
     <div className="mx-auto w-full max-w-[640px]">
-      <div className="sticky top-0 z-20 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-md lg:top-0">
-        <h1 className="text-[18px] font-bold">Activity</h1>
+      <div className="sticky top-0 z-20 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+        <h1 className="text-[15px] font-semibold">Activity</h1>
       </div>
 
       {isLoading ? (

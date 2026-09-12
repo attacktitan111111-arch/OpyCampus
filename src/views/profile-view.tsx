@@ -75,24 +75,21 @@ export function ProfileView({ username }: { username: string }) {
 
   return (
     <div className="mx-auto w-full max-w-[640px] pb-4">
-      {/* Header */}
-      <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/80 px-3 py-2.5 backdrop-blur-md lg:top-0">
+      {/* Header — minimal context bar (no duplicate of name). The body shows the full name + verified badge. */}
+      <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
         {canBack() && (
-          <button onClick={back} className="rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground" aria-label="Back">
+          <button onClick={back} className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Back">
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1 truncate text-[16px] font-bold">
-            <span className="truncate">{user.name}</span>
-            {user.verified && <VerifiedBadge className="h-4 w-4 text-primary" />}
-          </div>
-          <p className="text-[13px] text-muted-foreground">{user._counts.posts} posts</p>
+          <p className="truncate text-[15px] font-semibold leading-tight text-foreground">@{user.username}</p>
+          <p className="text-[12px] text-muted-foreground">{user._counts.posts} posts</p>
         </div>
       </div>
 
-      {/* Profile body */}
-      <div className="px-4 pt-4">
+      {/* Profile body — full name + verified badge + bio live here (single source of truth) */}
+      <div className="px-4 pt-5 sm:px-5">
         <div className="flex items-start justify-between gap-4">
           <UserAvatar name={user.name} username={user.username} avatarUrl={user.avatarUrl} size={76} className="ring-4 ring-background" />
           <div className="flex items-center gap-2">

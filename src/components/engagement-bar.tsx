@@ -49,40 +49,40 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
   };
 
   return (
-    <div className="flex items-center justify-between max-w-xs -ml-2">
+    <div className="flex items-center justify-between gap-1 sm:max-w-[420px]">
       <button
         onClick={onReply}
-        className="group flex items-center gap-1.5 rounded-full px-2 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
+        className="group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         aria-label="Reply"
       >
         <MessageCircle className="h-[18px] w-[18px] transition-transform group-active:scale-90" />
-        <span className="text-xs"><Counter value={post._counts.replies} /></span>
+        <span className="text-[12px] tabular-nums leading-none"><Counter value={post._counts.replies} /></span>
       </button>
 
       <button
         onClick={toggleRepost}
         disabled={rpMut.isPending}
         className={cn(
-          "group flex items-center gap-1.5 rounded-full px-2 py-1.5 transition-colors",
-          post.reposted ? "text-emerald-500" : "text-muted-foreground hover:text-foreground"
+          "group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors",
+          post.reposted ? "text-emerald-500" : "text-muted-foreground hover:bg-accent hover:text-foreground"
         )}
         aria-label="Repost"
       >
         <Repeat2 className="h-[19px] w-[19px] transition-transform group-active:scale-90" />
-        <span className="text-xs"><Counter value={post._counts.reposts} /></span>
+        <span className="text-[12px] tabular-nums leading-none"><Counter value={post._counts.reposts} /></span>
       </button>
 
       <button
         onClick={toggleLike}
         disabled={likeMut.isPending}
         className={cn(
-          "group flex items-center gap-1.5 rounded-full px-2 py-1.5 transition-colors",
-          post.liked ? "text-rose-500" : "text-muted-foreground hover:text-rose-500"
+          "group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors",
+          post.liked ? "text-rose-500" : "text-muted-foreground hover:bg-accent hover:text-rose-500"
         )}
         aria-label="Like"
       >
         <Heart className={cn("h-[18px] w-[18px] transition-transform group-active:scale-90", post.liked && "fill-current", animLike && "animate-like-pop")} />
-        <span className="text-xs"><Counter value={post._counts.likes} /></span>
+        <span className="text-[12px] tabular-nums leading-none"><Counter value={post._counts.likes} /></span>
       </button>
 
       <div className="flex items-center">
@@ -90,8 +90,8 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
           onClick={toggleBookmark}
           disabled={bmMut.isPending}
           className={cn(
-            "group flex items-center gap-1.5 rounded-full px-2 py-1.5 transition-colors",
-            post.bookmarked ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            "group flex items-center rounded-full px-2.5 py-1.5 transition-colors",
+            post.bookmarked ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
           )}
           aria-label="Save"
         >
@@ -99,7 +99,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
         </button>
         <button
           onClick={share}
-          className="group flex items-center gap-1.5 rounded-full px-2 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
+          className="group flex items-center rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           aria-label="Share"
         >
           <Share className="h-[17px] w-[17px] transition-transform group-active:scale-90" />

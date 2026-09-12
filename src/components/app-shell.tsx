@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const desktopNav = (
     <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col border-r border-border px-2.5 py-5 lg:flex xl:w-[244px] xl:px-3">
-      <button onClick={() => nav({ name: "home" })} className="mb-6 flex items-center px-2 lg:px-3">
+      <button onClick={() => nav({ name: "home" })} className="mb-6 flex items-center px-2 transition hover:opacity-80 lg:px-3" aria-label="Scholar home">
         <ScholarLogo size={28} />
       </button>
 
@@ -129,7 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) : (
         <Button
           onClick={() => openAuth("signup")}
-          className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm xl:px-0"
+          className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 xl:px-0"
         >
           <span className="xl:mx-auto">Get started</span>
         </Button>
@@ -150,7 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ) : me ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-3 rounded-full px-2 py-2 text-left transition hover:bg-accent tap-highlight-none">
+              <button className="flex w-full items-center gap-3 rounded-full px-2 py-2 text-left transition hover:bg-accent tap-highlight-none" aria-label="Account menu">
                 <UserAvatar name={me.name} username={me.username} avatarUrl={me.avatarUrl} size={36} />
                 <div className="hidden min-w-0 flex-1 xl:block">
                   <div className="flex items-center gap-1 truncate text-[14px] font-semibold">
@@ -200,24 +200,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const mobileTop = (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md lg:hidden safe-top">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/85 px-4 backdrop-blur-md lg:hidden safe-top">
       {canBack() && view.name !== "home" ? (
         <button
           onClick={back}
-          className="-ml-1 inline-flex items-center gap-1 rounded-full p-1.5 text-foreground transition hover:bg-accent"
+          className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-accent tap-highlight-none"
           aria-label="Back"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
       ) : (
-        <button onClick={() => nav({ name: "home" })}>
+        <button onClick={() => nav({ name: "home" })} className="transition hover:opacity-80" aria-label="Scholar home">
           <ScholarLogo size={26} />
         </button>
       )}
       <div className="flex items-center gap-1">
         <button
           onClick={() => nav({ name: "search", query: "" })}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"
           aria-label="Search"
         >
           <Search className="h-[19px] w-[19px]" />
@@ -263,7 +263,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {me ? (
         <button
           onClick={() => openCompose()}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition active:scale-95"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition active:scale-95 tap-highlight-none"
           aria-label="Compose"
         >
           <Plus className="h-6 w-6" />
@@ -271,7 +271,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) : (
         <button
           onClick={() => openAuth("login")}
-          className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-4 text-primary-foreground shadow-sm"
+          className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-4 text-primary-foreground shadow-sm transition active:scale-95 tap-highlight-none"
           aria-label="Sign in"
         >
           <span className="text-[13px] font-semibold">Sign in</span>

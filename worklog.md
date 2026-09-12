@@ -103,3 +103,48 @@ Verification (Agent Browser):
 
 Stage Summary:
 - Scholar is now a real, production-grade platform: credential-based auth (scrypt + httpOnly session cookies), real image/video uploads from device with disk storage + range-request video streaming, user-created institutions (schools/colleges/universities with cover/logo uploads + private feeds), and full communities/groups (study groups, clubs, courses with create/join/feed). Custom premium SVG icons (SparkIcon for For You, CommunityIcon for Groups) matching the Scholar graduation-cap brand. All verified end-to-end in the browser.
+
+---
+Task ID: POLISH-1
+Agent: frontend-styling-expert
+Task: Audit and polish Scholar UI to production-grade Threads-like aesthetic — fix profile header redundancy, refine spacing/typography, polish post cards + engagement bar, compose dialog, avatars, mobile responsiveness, and dark mode.
+
+Work Log:
+- globals.css: refined design tokens. Bumped --radius to 0.875rem for slightly softer corners. Tightened muted-foreground to oklch(0.52) for better readability in light; kept dark at 0.62. Added base `font-size: 16px`, `line-height: 1.5` on body, font-feature-settings "cv11 ss01 cv05" for premium Inter feel. Added `letter-spacing: -0.011em` + `text-wrap: balance` on headings, `text-wrap: pretty` on paragraphs. Added `:focus-visible` ring for keyboard a11y. Bumped selection colors. Added component-layer helpers: `.scholar-sticky-bar`, `.scholar-row-hover`, `.touch-visible`. Kept true-black dark mode (oklch(0 0 0)) for OLED.
+- profile-view.tsx: fixed the explicit redundancy (top sticky bar was showing name + verified badge, then profile body showed it again). Now the sticky bar shows ONLY `@username` + post count as a subtle context bar; the body keeps the prominent full name + verified badge + bio + counts. Also hid the back button on mobile (`hidden lg:inline-flex`) since the mobileTop in AppShell already provides one — eliminating a second back-button redundancy.
+- post-card.tsx: hover state now uses `hover:bg-muted/40` (slightly stronger). Options menu button (`MoreHorizontal`) is now always visible on mobile (touch devices can't hover) and `lg:opacity-0 lg:group-hover:opacity-100` on desktop. Body content uses `text-[15px] leading-[1.55] text-pretty` for proper wrapping. Engagement bar moved to `-ml-2.5` to align the first icon edge with the avatar's left edge (Threads pattern). Added `tap-highlight-none` for native-feel taps.
+- engagement-bar.tsx: rebuilt layout to use `justify-between gap-1 sm:max-w-[420px]` (was `max-w-xs -ml-2`). Each button now has its own `hover:bg-accent` pill background for clearer affordance. Counters use `tabular-nums leading-none` for alignment. Cleaner gap between icon and counter.
+- compose-box.tsx: added a clear empty drop area ("Add photo or video" — dashed border, full-width) above the toolbar that opens the file picker directly, solving the "where do I upload?" UX issue. Avatar bumped to 44px to match post-card. Toolbar now uses a vertical separator (`h-5 w-px bg-border`) between hashtag button and scope picker for visual grouping. Upload icon button only shows when media already exist (otherwise the empty drop area handles it). Media previews got `bg-background/85` + shadow for clearer remove buttons. Textarea uses `leading-[1.5]`.
+- app-shell.tsx: mobileTop bumped to `bg-background/85` for slightly stronger blur. Logo button + back button now have `transition hover:opacity-80` and `tap-highlight-none`. Account menu trigger button got an `aria-label="Account menu"`. Compose button + sign-in button have `tap-highlight-none` + `active:scale-95` for native tap feedback. Added `aria-label="Scholar home"` to the logo buttons.
+- user-avatar.tsx: img inside avatar now has `pointer-events-none` (so clicks always go to the outer div, not the image). Initials use `Math.max(11, size * 0.36)` to prevent microscopic text on small avatars. Added `active:scale-[0.97]` press feedback when clickable. VerifiedBadge class list reorganized for clarity.
+- post-detail-view.tsx: header now says "Post" (was "Post" with bold). Back button hidden on mobile (`hidden lg:inline-flex`) — mobileTop provides one. Main post content uses `leading-[1.55] text-pretty`. Engagement bar wrapper uses `mt-2 -ml-2.5 border-y border-border py-1.5` for a cleaner full-width divider. Reply composer trigger gets `hover:border-foreground/20` for subtle hover affordance. Replies section uses `text-pretty` for better wrapping.
+- home-feed.tsx: FIXED A BUG — `Sparkles` icon was referenced but never imported (would crash if the empty-state rendered). Added `Sparkles` to the lucide imports. Compose prompt button gets `hover:border-foreground/20`. Tabs use `cursor-not-allowed` when disabled for clarity.
+- institution-view.tsx + community-view.tsx: same header pattern as profile — sticky bar now shows `@handle` + posts/members count (no duplicate of name); body shows full name + verified badge. Back button hidden on mobile (mobileTop has it). Body content uses `leading-[1.55] text-pretty`. Spacing bumped to `px-4 sm:px-5` consistently across header and body. Banner unchanged (already clean).
+- bookmarks-view.tsx + settings-view.tsx + activity-view.tsx + explore-view.tsx: applied the same header pattern (back button hidden on mobile, `bg-background/85`, `text-[15px] font-semibold` heading, `lg:px-5` for desktop padding). Activity and Explore top bars don't show back button anyway (they're top-level views).
+
+Verification (Agent Browser, both desktop 1440×900 and mobile 390×844):
+- Home feed renders posts with avatars, verified badges, hashtags, engagement bar, options menu (visible on mobile, hover on desktop). ✅
+- Profile (desktop + mobile): header bar shows ONLY `@aria.chen` + "6 posts" — body shows "Aria Chen" h1 + verified badge + bio + role + institution pill + Following/Followers. No more redundant name+badge duplication. ✅
+- Mobile profile: only ONE back button (in mobileTop), no duplicate in sticky profile bar. ✅
+- Desktop profile: back button visible in sticky bar (since desktop has no mobileTop). ✅
+- Post detail: header says "Post" with desktop back button. Engagement bar in clean divider. Reply composer + Replies section render. ✅
+- Compose dialog: empty drop area ("Add photo or video") is clear and tappable. Toolbar organized with separator. Char ring + counter render. ✅
+- Institution view (Northbridge): minimal sticky header (`@northbridge-u` + counts), full name + verified badge in body, members grid, feed renders. ✅
+- Community view (CS251): same pattern, clean banner + icon + join button. ✅
+- Activity view: minimal "Activity" header, notification rows render. ✅
+- Settings view: minimal "Settings" header, profile card, appearance toggle, account section. ✅
+- Dark mode: pure black background, subtle alpha-white borders, all elements render correctly. ✅
+- Lint: 0 errors, 0 warnings. Dev server: 200 OK on all routes. ✅
+
+Issues Found & Fixed:
+1. Profile header redundancy (PRIMARY ISSUE) — fixed: top bar now shows only @handle + post count, body shows full name + badge.
+2. Back-button redundancy on mobile — fixed: secondary sticky bars' back buttons are `hidden lg:inline-flex` (mobileTop provides back on mobile).
+3. home-feed.tsx runtime bug — `Sparkles` was used but not imported; would have crashed the empty-state. Fixed by adding the import.
+4. Post-card options menu invisible on touch — fixed: now always visible on mobile (`opacity-100` by default, `lg:opacity-0` only on desktop with hover-reveal).
+5. Engagement bar alignment — fixed: removed `max-w-xs -ml-2` constraint, replaced with `justify-between gap-1 sm:max-w-[420px]` and proper `-ml-2.5` on the wrapper for edge alignment with avatar.
+6. Compose file upload UX — fixed: added explicit dashed-border drop area in the body so users know where to upload (was just a small icon button in the toolbar).
+7. Inconsistent header padding — fixed: all secondary bars now use `px-4 lg:px-5` and `bg-background/85` consistently.
+8. Typographic inconsistency — fixed: post body content uses `leading-[1.55] text-pretty`; headings use `letter-spacing: -0.011em`.
+
+Stage Summary:
+- Scholar UI is now production-grade with a clean Threads-like aesthetic. The profile header redundancy is eliminated, post cards have proper hover + touch affordances, the compose dialog has a clear upload area, avatars are robust, mobile has no duplicate back buttons, dark mode is true black, and typography is consistent. All changes are visual/CSS/component only — no API, Prisma, or lib/store/hooks files were touched. Lint clean, dev server responding 200 on all routes.

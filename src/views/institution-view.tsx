@@ -45,35 +45,33 @@ export function InstitutionView({ handle }: { handle: string }) {
 
   return (
     <div className="mx-auto w-full max-w-[640px]">
-      {/* Header */}
-      <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/80 px-3 py-2.5 backdrop-blur-md lg:top-0">
-        <button onClick={back} className="rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground" aria-label="Back">
+      {/* Header — minimal context bar (no duplicate of name). Body shows full name + verified badge. */}
+      <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+        <button onClick={back} className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1 truncate text-[16px] font-bold">
-            {isPrivate && <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />}
-            <span className="truncate">{inst.name}</span>
+          <div className="flex items-center gap-1 truncate text-[15px] font-semibold leading-tight">
+            {isPrivate && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+            <span className="truncate">@{inst.handle}</span>
             {inst.verified && <VerifiedBadge className="h-4 w-4 text-primary" />}
           </div>
-          <p className="text-[13px] text-muted-foreground">{inst._counts.posts} posts · {inst._counts.members} members</p>
+          <p className="text-[12px] text-muted-foreground">{inst._counts.posts} posts · {inst._counts.members} members</p>
         </div>
       </div>
 
       {/* Banner */}
       <div className="relative h-32 w-full bg-gradient-to-br from-primary/15 to-primary/5 sm:h-40">
         {inst.coverUrl && (
-           
           <img src={inst.coverUrl} alt="" className="h-full w-full object-cover" />
         )}
       </div>
 
       {/* Logo + actions */}
-      <div className="px-4">
+      <div className="px-4 sm:px-5">
         <div className="-mt-10 flex items-end justify-between">
           <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-background bg-background">
             {inst.logoUrl ? (
-               
               <img src={inst.logoUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <GraduationCap className="h-9 w-9 text-foreground" />
@@ -97,10 +95,10 @@ export function InstitutionView({ handle }: { handle: string }) {
             <h1 className="text-[20px] font-bold leading-tight">{inst.name}</h1>
             {inst.verified && <VerifiedBadge className="h-5 w-5 text-primary" />}
           </div>
-          <p className="text-[15px] text-muted-foreground">@{inst.handle} · {typeLabel[inst.type] ?? inst.type}</p>
+          <p className="text-[14px] text-muted-foreground">@{inst.handle} · {typeLabel[inst.type] ?? inst.type}</p>
         </div>
 
-        {inst.bio && <p className="mt-3 text-[15px] leading-relaxed">{inst.bio}</p>}
+        {inst.bio && <p className="mt-3 text-[15px] leading-[1.55] text-pretty">{inst.bio}</p>}
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
           {inst.location && (
@@ -143,7 +141,7 @@ export function InstitutionView({ handle }: { handle: string }) {
 
       {/* Feed */}
       <div className="mt-4 border-t border-border">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-3 sm:px-5">
           <h2 className="flex items-center gap-1.5 text-[15px] font-semibold">
             {isPrivate ? <Lock className="h-4 w-4 text-muted-foreground" /> : <ShieldCheck className="h-4 w-4 text-muted-foreground" />}
             {isPrivate ? "Private feed" : "Feed"}

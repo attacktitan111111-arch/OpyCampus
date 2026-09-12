@@ -185,13 +185,13 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
       )}
 
       {/* Body */}
-      <div className="flex min-h-0 flex-1 gap-3 overflow-y-auto scrollbar-thin px-4 py-4">
+      <div className="flex min-h-0 flex-1 gap-3 overflow-y-auto scrollbar-thin px-4 py-4 sm:px-5">
         <div className="shrink-0">
           <UserAvatar
             name={session?.user?.name ?? "You"}
             username={session?.user?.username}
             avatarUrl={session?.user?.avatarUrl}
-            size={40}
+            size={44}
           />
         </div>
         <div className="min-h-0 flex-1">
@@ -200,27 +200,27 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, MAX))}
             placeholder={isReply ? "Write your reply…" : "What's new?"}
-            className="min-h-[140px] w-full resize-none bg-transparent text-[17px] leading-relaxed outline-none placeholder:text-muted-foreground"
+            className="min-h-[140px] w-full resize-none bg-transparent text-[17px] leading-[1.5] outline-none placeholder:text-muted-foreground"
           />
 
           {media.length > 0 && (
             <div className="mt-2 grid grid-cols-2 gap-1.5">
               {media.map((m, i) => (
-                <div key={i} className="relative aspect-square overflow-hidden rounded-xl border border-border bg-secondary">
+                <div key={i} className="group/media relative aspect-square overflow-hidden rounded-xl border border-border bg-secondary">
                   {m.type === "video" ? (
                     <video src={m.url} className="h-full w-full object-cover" muted playsInline />
                   ) : (
-                     
                     <img src={m.url} alt="" className="h-full w-full object-cover" />
                   )}
                   <button
                     onClick={() => setMedia((p) => p.filter((_, idx) => idx !== i))}
-                    className="absolute right-1.5 top-1.5 rounded-full bg-background/80 p-1 backdrop-blur transition hover:bg-background"
+                    className="absolute right-1.5 top-1.5 rounded-full bg-background/85 p-1 text-foreground shadow-sm backdrop-blur transition hover:bg-background"
+                    aria-label="Remove media"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
                   {m.type === "video" && (
-                    <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-background/80 px-1.5 py-0.5 text-[10px] font-medium backdrop-blur">
+                    <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-background/85 px-1.5 py-0.5 text-[10px] font-medium text-foreground backdrop-blur">
                       <Film className="h-3 w-3" /> Video
                     </span>
                   )}
@@ -228,20 +228,39 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
               ))}
             </div>
           )}
+
+          {/* Empty drop area — clear affordance for uploads */}
+          {media.length === 0 && (
+            <button
+              onClick={handlePickFiles}
+              disabled={uploading}
+              type="button"
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-secondary/30 px-4 py-5 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/30 hover:bg-secondary hover:text-foreground"
+            >
+              {uploading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</>
+              ) : (
+                <><ImagePlus className="h-4 w-4" /> Add photo or video</>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between border-t border-border px-3 py-2.5">
+      <div className="flex items-center justify-between border-t border-border px-3 py-2.5 sm:px-4">
         <div className="flex items-center gap-0.5">
-          <button
-            onClick={handlePickFiles}
-            disabled={uploading || media.length >= MAX_MEDIA}
-            className="rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-primary disabled:opacity-40"
-            aria-label="Add image or video"
-          >
-            {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
-          </button>
+          {/* Upload — only show the icon-button when media already exist (otherwise use the empty drop area above) */}
+          {media.length > 0 && (
+            <button
+              onClick={handlePickFiles}
+              disabled={uploading || media.length >= MAX_MEDIA}
+              className="rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40"
+              aria-label="Add image or video"
+            >
+              {uploading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <ImagePlus className="h-[18px] w-[18px]" />}
+            </button>
+          )}
           <button
             onClick={() => {
               const t = textareaRef.current;
@@ -254,63 +273,66 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
                 t.setSelectionRange(start + 1, start + 1);
               });
             }}
-            className="rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-primary"
+            className="rounded-full p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
             aria-label="Add hashtag"
           >
             <Hash className="h-[18px] w-[18px]" />
           </button>
 
           {!isReply && allScopes.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className={cn(
-                    "ml-1 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13px] font-medium transition hover:bg-accent",
-                    chosenScope ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {chosenScope ? (
-                    <>
-                      {chosenScope.isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
-                      <span className="max-w-[110px] truncate">{chosenScope.name}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Globe className="h-3.5 w-3.5" /> Public
-                    </>
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setScope({ kind: "public" })}>
-                  <Globe className="mr-2 h-4 w-4" /> Public timeline
-                </DropdownMenuItem>
-                {myInstitutions.map((s) => (
-                  <DropdownMenuItem key={`i-${s.id}`} onClick={() => setScope({ kind: "institution", id: s.id })}>
-                    {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
-                    <span className="truncate">{s.name}</span>
+            <>
+              <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13px] font-medium transition hover:bg-accent",
+                      chosenScope ? "text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    {chosenScope ? (
+                      <>
+                        {chosenScope.isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
+                        <span className="max-w-[110px] truncate">{chosenScope.name}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Globe className="h-3.5 w-3.5" /> Public
+                      </>
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setScope({ kind: "public" })}>
+                    <Globe className="mr-2 h-4 w-4" /> Public timeline
                   </DropdownMenuItem>
-                ))}
-                {memberInstitutions.map((s) => (
-                  <DropdownMenuItem key={`im-${s.id}`} onClick={() => setScope({ kind: "institution", id: s.id })}>
-                    {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
-                    <span className="truncate">{s.name}</span>
-                  </DropdownMenuItem>
-                ))}
-                {myCommunities.map((s) => (
-                  <DropdownMenuItem key={`c-${s.id}`} onClick={() => setScope({ kind: "community", id: s.id })}>
-                    {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
-                    <span className="truncate">{s.name}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  {myInstitutions.map((s) => (
+                    <DropdownMenuItem key={`i-${s.id}`} onClick={() => setScope({ kind: "institution", id: s.id })}>
+                      {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
+                      <span className="truncate">{s.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  {memberInstitutions.map((s) => (
+                    <DropdownMenuItem key={`im-${s.id}`} onClick={() => setScope({ kind: "institution", id: s.id })}>
+                      {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
+                      <span className="truncate">{s.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  {myCommunities.map((s) => (
+                    <DropdownMenuItem key={`c-${s.id}`} onClick={() => setScope({ kind: "community", id: s.id })}>
+                      {s.isPrivate ? <Lock className="mr-2 h-4 w-4" /> : <Globe className="mr-2 h-4 w-4" />}
+                      <span className="truncate">{s.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           )}
         </div>
 
         <div className="flex items-center gap-2">
           {media.length > 0 && (
-            <span className="text-[12px] text-muted-foreground">{media.length}/{MAX_MEDIA}</span>
+            <span className="text-[12px] tabular-nums text-muted-foreground">{media.length}/{MAX_MEDIA}</span>
           )}
           {text.length > 0 && (
             <div className="relative h-5 w-5">

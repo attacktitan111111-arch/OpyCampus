@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users, School, PenSquare } from "lucide-react";
+import { Users, School, PenSquare, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useFeed, useSession } from "@/lib/hooks";
 import { PostCard } from "@/components/post-card";
@@ -40,7 +40,7 @@ export function HomeFeed() {
                 className={cn(
                   "relative flex flex-1 items-center justify-center gap-1.5 py-3.5 text-[14px] font-semibold transition-colors tap-highlight-none",
                   active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                  disabled && "opacity-40"
+                  disabled && "cursor-not-allowed opacity-40"
                 )}
               >
                 {t.renderIcon(active)}
@@ -55,10 +55,10 @@ export function HomeFeed() {
       </div>
 
       {/* Compose prompt (desktop inline) */}
-      <div className="hidden border-b border-border px-4 py-3 lg:block">
+      <div className="hidden border-b border-border px-4 py-3 lg:block lg:px-5">
         <button
           onClick={() => openCompose()}
-          className="flex w-full items-center gap-3 rounded-full border border-border bg-secondary/40 px-4 py-2.5 text-left text-muted-foreground transition hover:bg-secondary"
+          className="flex w-full items-center gap-3 rounded-full border border-border bg-secondary/40 px-4 py-2.5 text-left text-muted-foreground transition hover:bg-secondary hover:border-foreground/20"
         >
           <PenSquare className="h-4 w-4" />
           <span>Share something with your class…</span>
