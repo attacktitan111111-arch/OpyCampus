@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Heart, MessageCircle, Repeat2, Bookmark, Share } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useApp, useToggleLike, useToggleBookmark, useToggleRepost } from "@/lib/hooks";
+import { useToggleLike, useToggleBookmark, useToggleRepost } from "@/lib/hooks";
 import type { Post } from "@/lib/hooks";
 import { toast } from "sonner";
 
@@ -18,7 +18,8 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
   const rpMut = useToggleRepost();
   const [animLike, setAnimLike] = useState(false);
 
-  const toggleLike = () => {
+  const toggleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (likeMut.isPending) return;
     if (!post.liked) {
       setAnimLike(true);
@@ -27,15 +28,23 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
     likeMut.mutate({ id: post.id, liked: post.liked });
   };
 
-  const toggleBookmark = () => {
+  const toggleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
     bmMut.mutate({ id: post.id, bookmarked: post.bookmarked });
   };
 
-  const toggleRepost = () => {
+  const toggleRepost = (e: React.MouseEvent) => {
+    e.stopPropagation();
     rpMut.mutate({ id: post.id, reposted: post.reposted });
   };
 
-  const share = async () => {
+  const handleReply = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onReply?.();
+  };
+
+  const share = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     try {
       if (navigator.share) {
         await navigator.share({ title: "Scholar post", text: post.content });
@@ -49,10 +58,14 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
   };
 
   return (
-    <div className="flex items-center justify-between gap-1 sm:max-w-[420px]">
+    // Stop ALL clicks inside the engagement bar from bubbling to the parent article
+    <div
+      className="flex items-center justify-between gap-1 sm:max-w-[420px]"
+      onClick={(e) => e.stopPropagation()}
+    >
       <button
-        onClick={onReply}
-        className="group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        onClick={handleReply}
+        className="group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none"
         aria-label="Reply"
       >
         <MessageCircle className="h-[18px] w-[18px] transition-transform group-active:scale-90" />
@@ -63,7 +76,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
         onClick={toggleRepost}
         disabled={rpMut.isPending}
         className={cn(
-          "group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors",
+          "group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none",
           post.reposted ? "text-emerald-500" : "text-muted-foreground hover:bg-accent hover:text-foreground"
         )}
         aria-label="Repost"
@@ -76,7 +89,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
         onClick={toggleLike}
         disabled={likeMut.isPending}
         className={cn(
-          "group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors",
+          "group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none",
           post.liked ? "text-rose-500" : "text-muted-foreground hover:bg-accent hover:text-rose-500"
         )}
         aria-label="Like"
@@ -90,7 +103,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
           onClick={toggleBookmark}
           disabled={bmMut.isPending}
           className={cn(
-            "group flex items-center rounded-full px-2.5 py-1.5 transition-colors",
+            "group flex items-center rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none",
             post.bookmarked ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
           )}
           aria-label="Save"
@@ -99,7 +112,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
         </button>
         <button
           onClick={share}
-          className="group flex items-center rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="group flex items-center rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none"
           aria-label="Share"
         >
           <Share className="h-[17px] w-[17px] transition-transform group-active:scale-90" />

@@ -170,3 +170,27 @@ Work Log:
 
 Stage Summary:
 - Upload bug FIXED. The full pipeline now works: pick/drag file → validate client-side → upload to /api/upload → stored on disk + DB → preview in compose → post with media → image/video renders in feed and profile. Works for any authenticated user. Real auth (signup/login/logout with scrypt + DB sessions) verified with a brand-new account.
+
+---
+Task ID: INTERACTION-FIX
+Agent: main (Z.ai Code)
+Task: Fix critical UX bug — Like/Repost/Save/Share clicks were navigating to the post detail page instead of working inline.
+
+Work Log:
+- Root cause: The PostCard's <article> element has onClick={openPost} to navigate to the post detail page. The EngagementBar buttons (Like, Repost, Bookmark, Share) did NOT call e.stopPropagation(), so their clicks bubbled up to the article's onClick, causing unwanted navigation + a loading state on the post detail page.
+- Fix: Added a wrapper onClick={(e) => e.stopPropagation()} on the EngagementBar's root div, so ALL clicks inside the engagement bar are prevented from bubbling to the parent article. Also added explicit e.stopPropagation() to each button handler for defense-in-depth.
+- Fix: Removed the unused useMemo import from post-card.tsx (lint cleanup).
+- Fix: Fixed the Reply handler type mismatch — PostCard's onReply took (e: React.MouseEvent) but EngagementBar called it as onReply?.() without the event, causing e.stopPropagation() to throw on undefined. Changed PostCard's onReply to () => void (propagation is already stopped in EngagementBar).
+- Fix: Added onClick={(e) => e.stopPropagation()} on the media container in PostCard so clicking on images/videos (especially video controls) doesn't navigate to the post detail page.
+- Verified via Agent Browser:
+  - Click Like → URL stays at /, stays on feed ✅
+  - Click Repost → URL stays at /, stays on feed ✅
+  - Click Save → URL stays at /, stays on feed ✅
+  - Click Share → URL stays at /, stays on feed ✅
+  - Click Reply → compose dialog opens (no navigation) ✅
+  - Click post content (non-interactive area) → navigates to post detail (intended) ✅
+  - Click author name → navigates to profile (intended) ✅
+  - Lint: 0 errors, 0 warnings ✅
+
+Stage Summary:
+- The core UX bug is fixed: all engagement interactions (like, repost, save, share, reply) now work inline with zero navigation and zero loading. Only clicking the post content/author/hashtags navigates, which is the intended Threads-like behavior. The app is now smooth and usable.
