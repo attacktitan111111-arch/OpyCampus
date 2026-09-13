@@ -148,3 +148,25 @@ Issues Found & Fixed:
 
 Stage Summary:
 - Scholar UI is now production-grade with a clean Threads-like aesthetic. The profile header redundancy is eliminated, post cards have proper hover + touch affordances, the compose dialog has a clear upload area, avatars are robust, mobile has no duplicate back buttons, dark mode is true black, and typography is consistent. All changes are visual/CSS/component only — no API, Prisma, or lib/store/hooks files were touched. Lint clean, dev server responding 200 on all routes.
+
+---
+Task ID: UPLOAD-FIX
+Agent: main (Z.ai Code)
+Task: Fix critical upload bug — /api/upload route was missing, causing 404 "Failed to find Server Action" on every photo/video upload attempt.
+
+Work Log:
+- Root cause: The /api/upload/route.ts file was missing from disk (deleted during a prior operation), so every POST /api/upload returned 404 "Failed to find Server Action". This is why users could not upload photos or videos.
+- Recreated src/app/api/upload/route.ts with: nodejs runtime, force-dynamic, FormData parsing, file type validation (JPG/PNG/WEBP/GIF/MP4/WEBM/MOV), size limits (12MB images / 60MB videos), disk storage to /upload, Attachment DB record.
+- Cleared stale .next cache (rm -rf .next) which may have cached the missing route.
+- Improved useUploadFile hook: added client-side validation (type + size + empty checks) for instant feedback before hitting the server, better error messages.
+- Upgraded compose-box UX: added drag-and-drop upload area with visual feedback (border highlight on drag-over), upload progress indicator with filename + animated bar, clear file-type hints ("JPG, PNG, WEBP, GIF · MP4, WEBM, MOV").
+- Verified end-to-end via Agent Browser:
+  - Login as aria.chen → compose → upload PNG (canvas-generated) → post → image appears in feed, loads at 200x200. ✅
+  - Upload video MP4 → 200, file served with range request (206 for seeking). ✅
+  - Signup new account "Jordan Lee" → upload image → post → image appears in feed. ✅
+  - File serving: images HTTP 200 with correct content-type, videos HTTP 206 with content-range. ✅
+  - All dev log entries: POST /api/upload 200, GET /api/files/* 200/206 — no errors. ✅
+  - Lint: 0 errors, 0 warnings. ✅
+
+Stage Summary:
+- Upload bug FIXED. The full pipeline now works: pick/drag file → validate client-side → upload to /api/upload → stored on disk + DB → preview in compose → post with media → image/video renders in feed and profile. Works for any authenticated user. Real auth (signup/login/logout with scrypt + DB sessions) verified with a brand-new account.

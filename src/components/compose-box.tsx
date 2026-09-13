@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ImagePlus, Hash, Globe, Lock, X, Loader2, Video, Film } from "lucide-react";
+import { useRef, useState, useCallback } from "react";
+import { ImagePlus, Hash, Globe, Lock, X, Loader2, Video, Film, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useCreatePost, useSession, useUploadFile, useInstitutionsSearch, useCommunitiesSearch } from "@/lib/hooks";
 import type { ComposeState } from "@/lib/store";
@@ -48,6 +48,8 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
 
   const [text, setText] = useState(compose.prefillText ?? "");
   const [media, setMedia] = useState<MediaItem[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ name: string; done: number; total: number } | null>(null);
   const [scope, setScope] = useState<ComposeState["scope"]>(compose.scope ?? null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,23 +95,27 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
 
   const handlePickFiles = () => fileInputRef.current?.click();
 
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = useCallback(async (files: FileList | File[] | null) => {
     if (!files) return;
+    const fileArr = Array.from(files);
+    if (fileArr.length === 0) return;
     const slots = MAX_MEDIA - media.length;
     if (slots <= 0) {
-      toast.message(`Up to ${MAX_MEDIA} media items`);
+      toast.message(`You can add up to ${MAX_MEDIA} media items`);
       return;
     }
-    const toUpload = Array.from(files).slice(0, slots);
+    const toUpload = fileArr.slice(0, slots);
     for (const file of toUpload) {
+      setUploadProgress({ name: file.name, done: 0, total: file.size });
       try {
         const result = await uploadMut.mutateAsync(file);
         setMedia((prev) => [...prev, { url: result.url, type: result.type }]);
       } catch (e: any) {
         toast.error(e.message || `Couldn't upload ${file.name}`);
       }
+      setUploadProgress(null);
     }
-  };
+  }, [media.length, uploadMut]);
 
   const handleSubmit = () => {
     if ((!text.trim() && media.length === 0) || createMut.isPending) return;
@@ -229,20 +235,42 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
             </div>
           )}
 
-          {/* Empty drop area — clear affordance for uploads */}
-          {media.length === 0 && (
+          {/* Empty drop area — drag & drop or click to upload */}
+          {media.length === 0 && !uploadProgress && (
             <button
               onClick={handlePickFiles}
-              disabled={uploading}
               type="button"
-              className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-secondary/30 px-4 py-5 text-[13px] font-medium text-muted-foreground transition hover:border-foreground/30 hover:bg-secondary hover:text-foreground"
-            >
-              {uploading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</>
-              ) : (
-                <><ImagePlus className="h-4 w-4" /> Add photo or video</>
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                handleFiles(e.dataTransfer.files);
+              }}
+              className={cn(
+                "mt-1 flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-7 text-[13px] font-medium transition",
+                dragOver
+                  ? "border-foreground bg-secondary text-foreground scale-[1.01]"
+                  : "border-border bg-secondary/30 text-muted-foreground hover:border-foreground/30 hover:bg-secondary hover:text-foreground"
               )}
+            >
+              <UploadCloud className="h-7 w-7" />
+              <span>Drag a photo or video here, or click to browse</span>
+              <span className="text-[11px] font-normal opacity-70">JPG, PNG, WEBP, GIF · MP4, WEBM, MOV (max 12MB / 60MB)</span>
             </button>
+          )}
+
+          {/* Upload progress */}
+          {uploadProgress && (
+            <div className="mt-1 flex items-center gap-3 rounded-xl border border-border bg-secondary/40 px-4 py-3">
+              <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium">Uploading {uploadProgress.name}…</p>
+                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-border">
+                  <div className="h-full w-1/3 animate-pulse rounded-full bg-primary" />
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

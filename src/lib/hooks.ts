@@ -241,14 +241,36 @@ export function useCreatePost() {
 export function useUploadFile() {
   return useMutation({
     mutationFn: async (file: File) => {
+      // Client-side validation for instant feedback
+      const allowedTypes = [
+        "image/jpeg", "image/png", "image/webp", "image/gif",
+        "video/mp4", "video/webm", "video/quicktime",
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error(`Unsupported file type: ${file.type || "unknown"}. Use JPG, PNG, WEBP, GIF, MP4, WEBM or MOV.`);
+      }
+      const isVideo = file.type.startsWith("video/");
+      const maxSize = isVideo ? 60 * 1024 * 1024 : 12 * 1024 * 1024;
+      if (file.size > maxSize) {
+        throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max ${isVideo ? "60 MB" : "12 MB"}.`);
+      }
+      if (file.size === 0) {
+        throw new Error("File is empty.");
+      }
+
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: fd, credentials: "include" });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || "Upload failed");
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        /* ignore parse error */
       }
-      return res.json() as Promise<{ id: string; url: string; type: "image" | "video"; mimeType: string; size: number }>;
+      if (!res.ok) {
+        throw new Error(data?.error || `Upload failed (HTTP ${res.status})`);
+      }
+      return data as { id: string; url: string; type: "image" | "video"; mimeType: string; size: number };
     },
   });
 }
