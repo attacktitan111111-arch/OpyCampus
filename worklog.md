@@ -194,3 +194,107 @@ Work Log:
 
 Stage Summary:
 - The core UX bug is fixed: all engagement interactions (like, repost, save, share, reply) now work inline with zero navigation and zero loading. Only clicking the post content/author/hashtags navigates, which is the intended Threads-like behavior. The app is now smooth and usable.
+
+---
+Task ID: VIEWS-1
+Agent: views-builder (Z.ai Code)
+Task: Build new frontend views (edit-profile, follows, messages, conversation, onboarding, legal) and update profile-view + page.tsx routing for OpyCampus.
+
+Work Log:
+- Read existing worklog and src/lib/hooks.ts, src/lib/store.ts, src/app/page.tsx, profile-view.tsx, and supporting components (view-helpers, user-card, institution-card, user-avatar, post-card) to learn patterns and conventions.
+- Created `src/views/edit-profile-view.tsx`:
+  - Splits into a parent `EditProfileView` (session gate + signed-out state) and `EditProfileForm` keyed by `me.id` so initial state is set from useState initializers (no setState-in-effect anti-pattern).
+  - Form fields: name (with NAME_MAX=60 counter), bio (with BIO_MAX=160 counter), department, location, website. All inputs use the existing `.auth-input` CSS class.
+  - Avatar and cover upload via `useUploadFile`, then `useUpdateProfile({avatarUrl})` / `useUpdateProfile({coverUrl})` to persist immediately. Spinner overlays during upload.
+  - Save button calls `useUpdateProfile` with the text fields, shows toast on success, and navigates to the profile view.
+  - Back button (lg only — mobileTop provides back on mobile).
+- Created `src/views/follows-view.tsx`:
+  - Header with back button + `@username` subtitle. Tabs (Following / Followers) reuse the `follows` view via `nav({ name: "follows", username, tab })`.
+  - Uses `useFollowing(username)` or `useFollowers(username)` based on the `tab` prop. Renders the existing `UserCard` with the right `following` flag derived from the API's `following` array.
+  - Loading + empty states (with CTA to explore).
+- Created `src/views/messages-view.tsx`:
+  - Header with back + PenSquare "new message" button. List of conversations from `useConversations()`.
+  - Each row shows the other user's avatar/name/@handle plus last message preview (prefixed with "You: " when the last sender was me, derived from `meId` passed to the row) and a relative time.
+  - Click → `nav({ name: "conversation", id })`.
+  - Empty state with CTA to start a new message.
+  - `NewMessageDialog` component (shadcn Dialog): inline user search via `useUsersSearch(q)`; clicking a result calls `useStartConversation({ username })` and navigates to the conversation.
+- Created `src/views/conversation-view.tsx`:
+  - Header: back button + clickable avatar/name of the other participant (navigates to their profile).
+  - Messages list with `useConversationMessages(id)`. Each message renders a chat bubble aligned left/right based on `isMe`. Bubbles from the same sender within 5 minutes are visually grouped (tighter top margin).
+  - Composer: textarea + Send button. Enter to send (Shift+Enter for newline). `useSendMessage({ id, content })`. On error, restores the unsent text and toasts. Disables while pending.
+  - Auto-scrolls to bottom on new messages via a ref + useEffect.
+  - Container uses `h-[calc(100dvh-7.5rem)] lg:h-screen` so the composer stays pinned at the bottom on mobile (under the bottom nav) and fills the desktop viewport.
+- Created `src/views/onboarding-view.tsx` (5-step flow):
+  - Parent `OnboardingView` (session gate + signed-out empty state) and a child `OnboardingFlow` keyed by `me.id` to avoid setState-in-effect.
+  - Progress dots at top with skip button (except on the final step).
+  - Step 1 (Welcome): big avatar uploader with `useUploadFile` + instant `useUpdateProfile({avatarUrl})`.
+  - Step 2 (Bio + department): text fields with counters; saves via `useUpdateProfile({bio, department})` before advancing.
+  - Step 3 (School): search institutions via `useInstitutionsSearch(q)`, join via `useJoinInstitution`. Selected state shown on the card. Continue works whether or not a school was picked.
+  - Step 4 (Follow): suggested users via `useExplore("")`; toggling follow via `useToggleFollow` and tracking in a local Set. Counter + Continue (Skip until 3+ followed).
+  - Step 5 (Done): celebratory summary card + "Go to feed" CTA → `nav({ name: "home" })`.
+- Created `src/views/legal-view.tsx`:
+  - Header with back + sub-page tabs for Terms / Privacy / Guidelines (each tab navigates with `nav({ name: "legal", page: ... })`).
+  - Body content from `useLegal(page)`. Parses paragraphs split by `\n\n`; lists (blocks whose remaining lines start with `- `) render as `<ul>`; short numbered heading-like lines render as `<h3>`.
+  - Added `legal` to `PUBLIC_VIEWS` in page.tsx so signed-out users can read legal pages.
+- Updated `src/views/profile-view.tsx`:
+  - Tabs changed from Posts/Replies/Likes to Posts/Reposts/Likes (icons: Grid3x3 / Repeat2 / Heart).
+  - Reposts tab uses `useUserReposts(username)`; likes tab continues to use `useUserPosts(username, "likes")`.
+  - Following & Followers counts are now clickable → `nav({ name: "follows", username, tab: "following" | "followers" })`.
+  - Message button (Mail icon) next to Follow; calls `useStartConversation({ username })` and navigates to the conversation. Replaced the old reply-prefill behavior.
+  - Cover photo (user.coverUrl) renders above the avatar as a banner; the avatar pulls up with `-mt-10` so it overlaps the cover edge (matches the institution-view pattern).
+  - Location and website are now shown in the meta row (with MapPin / Globe icons); website is linkified and stripped of the `https?://` prefix for display.
+  - "Edit profile" button now navigates to `nav({ name: "edit-profile" })` (was going to settings).
+- Updated `src/app/page.tsx`:
+  - Imported all new views and added `case` branches for `messages`, `conversation`, `edit-profile`, `onboarding`, `legal`, `follows`.
+  - Added `legal` to `PUBLIC_VIEWS` so signed-out users can read legal pages.
+- Fixed a pre-existing bug in `src/components/app-shell.tsx`: the import `from "./scholar-logo"` was pointing at a non-existent file (the file was renamed to `opycampus-logo.tsx`). Updated the import path to `"./opycampus-logo"` so the app shell renders (was causing a 500 on `/`).
+
+Verification:
+- `bun run lint`: 0 errors, 0 warnings. ✅
+- Dev log shows `GET / 200`, `GET /api/session 200`, `GET /api/legal?page=terms 200`, `GET /api/conversations 200`, `GET /api/users/aria.chen/following|followers|reposts 200`, `GET /api/legal?page=guidelines 200`. ✅
+- `curl http://localhost:3000/` returns 200 (previously 500 due to the bad import). ✅
+
+Stage Summary:
+- All 6 new views are built and routed. Profile view now has reposts tab, clickable follow counts, message button, cover photo, location/website display, and Edit-profile navigation. The app shell renders correctly again after the import-path fix. Lint is clean and the dev server returns 200 on all the relevant API routes.
+
+---
+Task ID: OPYCAMPUS-REBRAND
+Agent: main (Z.ai Code)
+Task: Rename to OpyCampus + add DMs, following/follower lists, edit profile, onboarding, legal pages, reposts tab.
+
+Work Log:
+- Renamed entire app from "Scholar" to "OpyCampus" — logo, metadata, auth overlay, settings, engagement bar, home feed, page title.
+- Schema: added Conversation, ConversationMember, Message models for DMs; added coverUrl, location, website fields to User.
+- API routes built:
+  - PATCH /api/profile — edit name, bio, department, location, website, avatarUrl, coverUrl
+  - GET /api/users/[username]/following — list who someone follows
+  - GET /api/users/[username]/followers — list someone's followers
+  - GET /api/users/[username]/reposts — reposted posts by a user
+  - GET+POST /api/conversations — list + start conversations
+  - GET+POST /api/conversations/[id]/messages — get + send messages
+  - GET /api/legal?page=terms|privacy|guidelines — legal page content
+- Serializers: added coverUrl, location, website to serializeUser.
+- Hooks: added useUpdateProfile, useFollowing, useFollowers, useUserReposts, useConversations, useStartConversation, useConversationMessages, useSendMessage, useLegal.
+- Store: added views — messages, conversation, edit-profile, onboarding, legal, follows; profile tab now includes "reposts".
+- Views built (via subagent):
+  - edit-profile-view.tsx — edit name/bio/department/location/website + upload avatar/cover
+  - follows-view.tsx — following/followers list with tabs
+  - messages-view.tsx — DM inbox + new message dialog with user search
+  - conversation-view.tsx — chat thread with bubbles, auto-scroll, enter-to-send
+  - onboarding-view.tsx — 5-step onboarding (avatar → bio → school → follow → done)
+  - legal-view.tsx — Terms/Privacy/Guidelines with sub-page tabs
+- Profile view updated: tabs are now Posts/Reposts/Likes (removed Replies); Following/Followers counts are clickable; Message button starts conversation; cover photo banner; location/website shown.
+- App shell: added Messages to account menu.
+- Settings: added Legal section (Terms/Privacy/Guidelines) + Messages link.
+
+Verification:
+- Upload API returns 200 ✅
+- Profile shows Posts/Reposts/Likes tabs ✅
+- Following list shows 4 users ✅
+- Edit profile form loads with pre-filled fields ✅
+- Messages view shows empty state ✅
+- Terms of Service page renders full content ✅
+- Lint: 0 errors, 0 warnings ✅
+
+Stage Summary:
+- OpyCampus now has: real auth, image/video uploads, DMs, following/follower lists, edit profile with avatar/cover upload, 5-step onboarding, legal pages (Terms/Privacy/Guidelines), reposts tab in profile, communities, institutions with private feeds. Ready for the Play Store launch guide.

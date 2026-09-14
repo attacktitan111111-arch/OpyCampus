@@ -10,6 +10,9 @@ export interface User {
   name: string;
   bio: string;
   avatarUrl: string | null;
+  coverUrl: string | null;
+  location: string | null;
+  website: string | null;
   role: string;
   verified: boolean;
   department: string | null;
@@ -447,6 +450,94 @@ export function useDeletePost() {
       qc.invalidateQueries({ queryKey: keys.bookmarks });
       toast.success("Post deleted");
     },
+  });
+}
+
+// ---------- Following / Followers / Reposts ----------
+
+export function useFollowing(username: string) {
+  return useQuery({
+    queryKey: keys.following(username),
+    queryFn: () => api<{ users: User[]; following: string[] }>(`/api/users/${username}/following`),
+    enabled: !!username,
+  });
+}
+
+export function useFollowers(username: string) {
+  return useQuery({
+    queryKey: keys.followers(username),
+    queryFn: () => api<{ users: User[]; following: string[] }>(`/api/users/${username}/followers`),
+    enabled: !!username,
+  });
+}
+
+export function useUserReposts(username: string) {
+  return useQuery({
+    queryKey: keys.reposts(username),
+    queryFn: () => api<{ posts: Post[] }>(`/api/users/${username}/reposts`),
+    enabled: !!username,
+  });
+}
+
+// ---------- Profile edit ----------
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string; bio?: string; department?: string; location?: string; website?: string; avatarUrl?: string; coverUrl?: string }) =>
+      api<{ user: User }>("/api/profile", { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.session });
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    },
+  });
+}
+
+// ---------- Conversations (DMs) ----------
+
+export function useConversations() {
+  return useQuery({
+    queryKey: keys.conversations,
+    queryFn: () => api<{ conversations: { id: string; other: User | null; lastReadAt: string; lastMessage: { content: string; createdAt: string; senderId: string } | null }[] }>("/api/conversations"),
+  });
+}
+
+export function useStartConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { username: string }) =>
+      api<{ conversationId: string }>("/api/conversations", { method: "POST", body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.conversations }),
+  });
+}
+
+export function useConversationMessages(id: string | null) {
+  return useQuery({
+    queryKey: id ? keys.conversationMessages(id) : ["conv-messages", "none"],
+    queryFn: () => api<{ conversation: { id: string; other: User | null }; messages: { id: string; senderId: string; content: string; createdAt: string; isMe: boolean }[] }>(`/api/conversations/${id}/messages`),
+    enabled: !!id,
+  });
+}
+
+export function useSendMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, content }: { id: string; content: string }) =>
+      api<{ message: { id: string; senderId: string; content: string; createdAt: string; isMe: boolean } }>(`/api/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ content }) }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: keys.conversationMessages(vars.id) });
+      qc.invalidateQueries({ queryKey: keys.conversations });
+    },
+  });
+}
+
+// ---------- Legal pages ----------
+
+export function useLegal(page: string) {
+  return useQuery({
+    queryKey: keys.legal(page),
+    queryFn: () => api<{ title: string; body: string }>(`/api/legal?page=${page}`),
   });
 }
 

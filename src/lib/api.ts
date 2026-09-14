@@ -31,6 +31,9 @@ export const keys = {
   replies: (id: string) => ["replies", id] as const,
   profile: (username: string) => ["profile", username] as const,
   userPosts: (username: string, tab: string) => ["user-posts", username, tab] as const,
+  following: (username: string) => ["following", username] as const,
+  followers: (username: string) => ["followers", username] as const,
+  reposts: (username: string) => ["reposts", username] as const,
   usersSearch: (q: string) => ["users", q] as const,
   institutionsSearch: (q: string) => ["institutions", q] as const,
   institution: (handle: string) => ["institution", handle] as const,
@@ -41,4 +44,7 @@ export const keys = {
   notifications: ["notifications"] as const,
   explore: (q: string) => ["explore", q] as const,
   bookmarks: ["bookmarks"] as const,
+  conversations: ["conversations"] as const,
+  conversationMessages: (id: string) => ["conv-messages", id] as const,
+  legal: (page: string) => ["legal", page] as const,
 };

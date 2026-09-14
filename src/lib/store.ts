@@ -7,15 +7,21 @@ export type View =
   | { name: "explore" }
   | { name: "search"; query?: string }
   | { name: "activity" }
-  | { name: "profile"; username: string; tab?: "posts" | "replies" | "likes" }
+  | { name: "profile"; username: string; tab?: "posts" | "replies" | "likes" | "reposts" }
   | { name: "post"; postId: string }
   | { name: "institution"; handle: string }
   | { name: "community"; handle: string }
-  | { name: "communities" } // discover/create communities
-  | { name: "institutions" } // discover/create institutions
+  | { name: "communities" }
+  | { name: "institutions" }
   | { name: "settings" }
   | { name: "bookmarks" }
-  | { name: "tag"; tag: string };
+  | { name: "tag"; tag: string }
+  | { name: "messages" }
+  | { name: "conversation"; id: string }
+  | { name: "edit-profile" }
+  | { name: "onboarding" }
+  | { name: "legal"; page: string }
+  | { name: "follows"; username: string; tab: "following" | "followers" };
 
 interface ComposeState {
   open: boolean;

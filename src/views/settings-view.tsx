@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Moon, Sun, ChevronRight, UserCircle, Building2, Info, LogOut, Users } from "lucide-react";
+import { ArrowLeft, Moon, Sun, ChevronRight, UserCircle, Building2, Info, LogOut, Users, FileText, Shield, Mail, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useSession, useLogout } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
@@ -121,6 +121,14 @@ export function SettingsView() {
           <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
         <button
+          onClick={() => nav({ name: "messages" })}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
+        >
+          <Mail className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1 text-[15px] font-medium">Messages</div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </button>
+        <button
           onClick={() => nav({ name: "communities" })}
           className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
         >
@@ -130,12 +138,41 @@ export function SettingsView() {
         </button>
       </section>
 
+      {/* Legal */}
+      <section className="border-b border-border">
+        <h2 className="px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">Legal</h2>
+        <button
+          onClick={() => nav({ name: "legal", page: "terms" })}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
+        >
+          <FileText className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1 text-[15px] font-medium">Terms of Service</div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </button>
+        <button
+          onClick={() => nav({ name: "legal", page: "privacy" })}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
+        >
+          <Shield className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1 text-[15px] font-medium">Privacy Policy</div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </button>
+        <button
+          onClick={() => nav({ name: "legal", page: "guidelines" })}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-muted/40"
+        >
+          <Heart className="h-5 w-5 text-muted-foreground" />
+          <div className="flex-1 text-[15px] font-medium">Community Guidelines</div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </button>
+      </section>
+
       {/* About */}
       <section className="border-b border-border">
         <h2 className="px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">About</h2>
         <div className="px-4 pb-4">
           <p className="text-[13px] leading-relaxed text-muted-foreground">
-            Scholar is a social space built for students, teachers, and institutions. Share thoughts, photos and videos; follow your classmates; join your school's private feed; and start study groups and clubs. Private feeds are visible only to members.
+            OpyCampus is a social space built for students, teachers, and institutions. Share thoughts, photos and videos; follow your classmates; join your school's private feed; and start study groups and clubs. Private feeds are visible only to members.
           </p>
         </div>
       </section>

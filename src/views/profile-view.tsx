@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, ArrowLeft, MapPin, MessageCircle, Heart, Grid3x3, Building2 } from "lucide-react";
+import { CalendarDays, ArrowLeft, MapPin, MessageCircle, Heart, Grid3x3, Building2, Globe, Repeat2, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useApp,
   useProfile,
   useUserPosts,
+  useUserReposts,
   useToggleFollow,
+  useStartConversation,
   useSession,
 } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
-import { RelativeTime } from "@/components/relative-time";
 import { PostCard } from "@/components/post-card";
 import { LoadingState, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
@@ -19,11 +20,13 @@ import { InstitutionPill } from "@/components/institution-pill";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-const TABS = [
+type TabKey = "posts" | "reposts" | "likes";
+
+const TABS: { key: TabKey; label: string; icon: typeof Grid3x3 }[] = [
   { key: "posts", label: "Posts", icon: Grid3x3 },
-  { key: "replies", label: "Replies", icon: MessageCircle },
+  { key: "reposts", label: "Reposts", icon: Repeat2 },
   { key: "likes", label: "Likes", icon: Heart },
-] as const;
+];
 
 function roleLabel(role: string) {
   switch (role) {
@@ -39,11 +42,13 @@ function roleLabel(role: string) {
 }
 
 export function ProfileView({ username }: { username: string }) {
-  const { nav, openCompose, back, canBack } = useApp();
+  const { nav, back, canBack } = useApp();
   const { data, isLoading, isError } = useProfile(username);
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("posts");
-  const posts = useUserPosts(username, tab);
+  const [tab, setTab] = useState<TabKey>("posts");
+  const posts = useUserPosts(username, tab === "likes" ? "likes" : "posts");
+  const reposts = useUserReposts(username);
   const followMut = useToggleFollow();
+  const startConvMut = useStartConversation();
   const { data: session } = useSession();
 
   const user = data?.user;
@@ -73,6 +78,20 @@ export function ProfileView({ username }: { username: string }) {
       }
     );
 
+  const handleMessage = () => {
+    startConvMut.mutate(
+      { username },
+      {
+        onSuccess: (d) => nav({ name: "conversation", id: d.conversationId }),
+        onError: (e) => toast.error(e.message || "Couldn't start conversation"),
+      }
+    );
+  };
+
+  // Pick the active list to render
+  const activeList = tab === "reposts" ? (reposts.data?.posts ?? []) : (posts.data?.posts ?? []);
+  const activeLoading = tab === "reposts" ? reposts.isLoading : posts.isLoading;
+
   return (
     <div className="mx-auto w-full max-w-[640px] pb-4">
       {/* Header — minimal context bar (no duplicate of name). The body shows the full name + verified badge. */}
@@ -88,25 +107,42 @@ export function ProfileView({ username }: { username: string }) {
         </div>
       </div>
 
+      {/* Cover photo (if any) */}
+      {user.coverUrl ? (
+        <div className="relative h-28 w-full bg-gradient-to-br from-primary/15 to-primary/5 sm:h-36">
+          <img src={user.coverUrl} alt="" className="h-full w-full object-cover" />
+        </div>
+      ) : null}
+
       {/* Profile body — full name + verified badge + bio live here (single source of truth) */}
       <div className="px-4 pt-5 sm:px-5">
         <div className="flex items-start justify-between gap-4">
-          <UserAvatar name={user.name} username={user.username} avatarUrl={user.avatarUrl} size={76} className="ring-4 ring-background" />
+          <UserAvatar
+            name={user.name}
+            username={user.username}
+            avatarUrl={user.avatarUrl}
+            size={76}
+            className={cn("ring-4 ring-background", user.coverUrl && "-mt-10")}
+          />
           <div className="flex items-center gap-2">
             {isMe ? (
-              <Button variant="secondary" className="rounded-full font-semibold" onClick={() => nav({ name: "settings" })}>
+              <Button
+                variant="secondary"
+                className="rounded-full font-semibold"
+                onClick={() => nav({ name: "edit-profile" })}
+              >
                 Edit profile
               </Button>
             ) : (
               <>
                 <button
-                  onClick={() =>
-                    openCompose({ prefillText: `@${user.username} `, replyTo: null })
-                  }
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent"
+                  onClick={handleMessage}
+                  disabled={startConvMut.isPending}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent disabled:opacity-50 tap-highlight-none"
                   aria-label="Message"
+                  title="Message"
                 >
-                  <MessageCircle className="h-4 w-4" />
+                  <Mail className="h-4 w-4" />
                 </button>
                 <Button
                   variant={isFollowing ? "secondary" : "default"}
@@ -129,7 +165,7 @@ export function ProfileView({ username }: { username: string }) {
           <p className="text-[15px] text-muted-foreground">@{user.username}</p>
         </div>
 
-        {user.bio && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{user.bio}</p>}
+        {user.bio && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-pretty">{user.bio}</p>}
 
         {/* Role + institution */}
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
@@ -144,8 +180,23 @@ export function ProfileView({ username }: { username: string }) {
           )}
         </div>
 
-        {/* Meta */}
+        {/* Meta — location, website, joined */}
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
+          {user.location && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3.5 w-3.5" /> {user.location}
+            </span>
+          )}
+          {user.website && (
+            <a
+              href={user.website.startsWith("http") ? user.website : `https://${user.website}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <Globe className="h-3.5 w-3.5" /> {user.website.replace(/^https?:\/\//, "")}
+            </a>
+          )}
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="h-3.5 w-3.5" /> Joined {format(new Date(user.createdAt), "MMMM yyyy")}
           </span>
@@ -156,16 +207,19 @@ export function ProfileView({ username }: { username: string }) {
           )}
         </div>
 
-        {/* Counts */}
+        {/* Counts — clickable */}
         <div className="mt-3 flex items-center gap-5 text-[14px]">
           <button
-            onClick={() => nav({ name: "profile", username })}
-            className="hover:underline"
+            onClick={() => nav({ name: "follows", username, tab: "following" })}
+            className="hover:underline tap-highlight-none"
           >
             <span className="font-semibold">{user._counts.followsGiven}</span>{" "}
             <span className="text-muted-foreground">Following</span>
           </button>
-          <button className="hover:underline">
+          <button
+            onClick={() => nav({ name: "follows", username, tab: "followers" })}
+            className="hover:underline tap-highlight-none"
+          >
             <span className="font-semibold">{user._counts.followsRecv}</span>{" "}
             <span className="text-muted-foreground">Followers</span>
           </button>
@@ -196,12 +250,12 @@ export function ProfileView({ username }: { username: string }) {
         </div>
       </div>
 
-      {/* Posts */}
-      {posts.isLoading ? (
+      {/* Posts / Reposts / Likes */}
+      {activeLoading ? (
         <LoadingState />
-      ) : (posts.data?.posts ?? []).length === 0 ? (
-        tab === "replies" ? (
-          <EmptyState icon={MessageCircle} title="No replies yet" description={`@${user.username} hasn't replied to anything yet.`} />
+      ) : activeList.length === 0 ? (
+        tab === "reposts" ? (
+          <EmptyState icon={Repeat2} title="No reposts yet" description={`Posts ${isMe ? "you've" : `@${user.username} has`} reposted will appear here.`} />
         ) : tab === "likes" ? (
           <EmptyState icon={Heart} title="No likes yet" description={`Posts ${isMe ? "you've" : `@${user.username} has`} liked will appear here.`} />
         ) : (
@@ -209,8 +263,12 @@ export function ProfileView({ username }: { username: string }) {
         )
       ) : (
         <div className="divide-y divide-border">
-          {(posts.data?.posts ?? []).map((p, i) => (
-            <PostCard key={p.id} post={p} showThreadLine={tab === "posts" && i < (posts.data?.posts.length ?? 0) - 1} />
+          {activeList.map((p, i) => (
+            <PostCard
+              key={p.id}
+              post={p}
+              showThreadLine={tab === "posts" && i < activeList.length - 1}
+            />
           ))}
         </div>
       )}

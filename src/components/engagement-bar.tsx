@@ -47,7 +47,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
     e.stopPropagation();
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Scholar post", text: post.content });
+        await navigator.share({ title: "OpyCampus post", text: post.content });
       } else {
         await navigator.clipboard.writeText(post.content);
         toast.success("Copied to clipboard");

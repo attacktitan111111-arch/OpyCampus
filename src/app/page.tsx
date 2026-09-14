@@ -14,6 +14,12 @@ import { InstitutionsView } from "@/views/institutions-view";
 import { BookmarksView } from "@/views/bookmarks-view";
 import { TagView } from "@/views/tag-view";
 import { SettingsView } from "@/views/settings-view";
+import { EditProfileView } from "@/views/edit-profile-view";
+import { FollowsView } from "@/views/follows-view";
+import { MessagesView } from "@/views/messages-view";
+import { ConversationView } from "@/views/conversation-view";
+import { OnboardingView } from "@/views/onboarding-view";
+import { LegalView } from "@/views/legal-view";
 import { LoadingState, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { GraduationCap } from "lucide-react";
@@ -47,13 +53,25 @@ function CurrentView() {
       return <TagView tag={view.tag} />;
     case "settings":
       return <SettingsView />;
+    case "messages":
+      return <MessagesView />;
+    case "conversation":
+      return <ConversationView id={view.id} />;
+    case "edit-profile":
+      return <EditProfileView />;
+    case "onboarding":
+      return <OnboardingView />;
+    case "legal":
+      return <LegalView page={view.page} />;
+    case "follows":
+      return <FollowsView username={view.username} tab={view.tab} />;
     default:
       return <HomeFeed />;
   }
 }
 
 // Views that are safe to browse while signed out
-const PUBLIC_VIEWS = new Set(["explore", "search", "tag", "institutions", "communities", "community", "institution"]);
+const PUBLIC_VIEWS = new Set(["explore", "search", "tag", "institutions", "communities", "community", "institution", "legal"]);
 
 export default function Page() {
   const { data: session, isLoading } = useSession();
@@ -75,7 +93,7 @@ export default function Page() {
         <div className="mx-auto w-full max-w-[640px]">
           <EmptyState
             icon={GraduationCap}
-            title="Sign in to Scholar"
+            title="Sign in to OpyCampus"
             description="Join your school's community, post, reply, and connect with classmates and teachers."
             className="py-24"
             action={

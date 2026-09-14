@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { GraduationCap, Loader2, Eye, EyeOff, ArrowRight, Check } from "lucide-react";
 import { useApp, useLogin, useSignup } from "@/lib/hooks";
-import { ScholarLogo } from "@/components/scholar-logo";
+import { ScholarLogo } from "@/components/opycampus-logo";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -31,9 +31,9 @@ export function AuthOverlay() {
         showCloseButton={false}
         className="max-w-md overflow-hidden rounded-3xl border-border bg-background p-0"
       >
-        <DialogTitle className="sr-only">{mode === "login" ? "Sign in to Scholar" : "Join Scholar"}</DialogTitle>
+        <DialogTitle className="sr-only">{mode === "login" ? "Sign in to OpyCampus" : "Join OpyCampus"}</DialogTitle>
         <DialogDescription className="sr-only">
-          {mode === "login" ? "Sign in to your Scholar account" : "Create a new Scholar account"}
+          {mode === "login" ? "Sign in to your OpyCampus account" : "Create a new OpyCampus account"}
         </DialogDescription>
         <AuthBody key={mode} mode={mode} />
       </DialogContent>
@@ -84,7 +84,7 @@ function AuthBody({ mode: initialMode }: { mode: "login" | "signup" }) {
         { email: email.trim(), username: username.trim(), name: name.trim() || username.trim(), password, role },
         {
           onSuccess: () => {
-            toast.success("Account created — welcome to Scholar");
+            toast.success("Account created — welcome to OpyCampus");
             closeAuth();
           },
           onError: (e) => toast.error(e.message || "Sign up failed"),
@@ -118,7 +118,7 @@ function AuthBody({ mode: initialMode }: { mode: "login" | "signup" }) {
         </div>
         <div>
           <h1 className="text-[22px] font-bold tracking-tight">
-            {mode === "login" ? "Welcome back" : "Join Scholar"}
+            {mode === "login" ? "Welcome back" : "Join OpyCampus"}
           </h1>
           <p className="mt-1 text-[14px] text-muted-foreground text-balance">
             {mode === "login"
@@ -236,7 +236,7 @@ function AuthBody({ mode: initialMode }: { mode: "login" | "signup" }) {
 
       {/* Switch mode */}
       <div className="px-6 pb-2 text-center text-[14px] text-muted-foreground">
-        {mode === "login" ? "New to Scholar? " : "Already have an account? "}
+        {mode === "login" ? "New to OpyCampus? " : "Already have an account? "}
         <button
           onClick={() => {
             setMode(mode === "login" ? "signup" : "login");

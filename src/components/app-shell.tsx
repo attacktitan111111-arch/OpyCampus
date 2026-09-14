@@ -1,9 +1,9 @@
 "use client";
 
-import { Home, Plus, Heart, User as UserIcon, Bookmark, Settings as SettingsIcon, Search, ArrowLeft, Users, LogOut } from "lucide-react";
+import { Home, Plus, Heart, User as UserIcon, Bookmark, Settings as SettingsIcon, Search, ArrowLeft, Users, LogOut, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useSession, useNotifications, useLogout } from "@/lib/hooks";
-import { ScholarLogo } from "./scholar-logo";
+import { OpyCampusLogo } from "./opycampus-logo";
 import { ThemeToggle } from "./theme-toggle";
 import { UserAvatar, VerifiedBadge } from "./user-avatar";
 import { SparkIcon, CommunityIcon } from "./custom-icons";
@@ -102,8 +102,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const desktopNav = (
     <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col border-r border-border px-2.5 py-5 lg:flex xl:w-[244px] xl:px-3">
-      <button onClick={() => nav({ name: "home" })} className="mb-6 flex items-center px-2 transition hover:opacity-80 lg:px-3" aria-label="Scholar home">
-        <ScholarLogo size={28} />
+      <button onClick={() => nav({ name: "home" })} className="mb-6 flex items-center px-2 transition hover:opacity-80 lg:px-3" aria-label="OpyCampus home">
+        <OpyCampusLogo size={28} />
       </button>
 
       <nav className="flex flex-col gap-1">
@@ -167,6 +167,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuItem onClick={() => nav({ name: "settings" })}>
                 <SettingsIcon className="mr-2 h-4 w-4" /> Settings
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => nav({ name: "messages" })}>
+                <Mail className="mr-2 h-4 w-4" /> Messages
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => nav({ name: "bookmarks" })}>
                 <Bookmark className="mr-2 h-4 w-4" /> Saved posts
               </DropdownMenuItem>
@@ -210,8 +213,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <ArrowLeft className="h-5 w-5" />
         </button>
       ) : (
-        <button onClick={() => nav({ name: "home" })} className="transition hover:opacity-80" aria-label="Scholar home">
-          <ScholarLogo size={26} />
+        <button onClick={() => nav({ name: "home" })} className="transition hover:opacity-80" aria-label="OpyCampus home">
+          <OpyCampusLogo size={26} />
         </button>
       )}
       <div className="flex items-center gap-1">

@@ -97,7 +97,7 @@ export function HomeFeed() {
           <EmptyState
             icon={Sparkles}
             title="Nothing here yet"
-            description="Be the first to post on Scholar."
+            description="Be the first to post on OpyCampus."
             action={
               <Button onClick={() => openCompose()} className="rounded-full">
                 Write a post

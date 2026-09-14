@@ -10,12 +10,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Scholar — where students talk",
+  title: "OpyCampus — campus social, reimagined",
   description:
     "A clean, minimal social space for students, teachers, and institutions. Share thoughts, follow classmates, join your school's private feed.",
-  applicationName: "Scholar",
+  applicationName: "OpyCampus",
   keywords: ["social", "students", "university", "school", "college", "threads", "scholar"],
-  authors: [{ name: "Scholar" }],
+  authors: [{ name: "OpyCampus" }],
   icons: { icon: "/logo.svg" },
 };
 

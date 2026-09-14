@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-export function ScholarLogo({ className, size = 28 }: { className?: string; size?: number }) {
+export function OpyCampusLogo({ className, size = 28 }: { className?: string; size?: number }) {
   return (
     <div className={cn("flex items-center gap-2 select-none", className)} style={{ height: size }}>
       <svg
@@ -36,7 +36,7 @@ export function ScholarLogo({ className, size = 28 }: { className?: string; size
           className="text-foreground"
         />
       </svg>
-      <span className="text-[19px] font-semibold tracking-tight text-foreground">Scholar</span>
+      <span className="text-[19px] font-semibold tracking-tight text-foreground">OpyCampus</span>
     </div>
   );
 }
