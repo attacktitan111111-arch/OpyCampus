@@ -4,7 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { ErrorBoundary } from "@/components/error-boundary";
+
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -32,7 +32,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <QueryClientProvider client={client}>
-        <ErrorBoundary>{children}</ErrorBoundary>
+        {children}
         <Toaster richColors closeButton />
       </QueryClientProvider>
     </ThemeProvider>
