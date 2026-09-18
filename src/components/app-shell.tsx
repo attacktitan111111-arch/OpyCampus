@@ -1,12 +1,13 @@
 "use client";
 
-import { Home, Plus, Heart, User as UserIcon, Bookmark, Settings as SettingsIcon, Search, ArrowLeft, Users, LogOut, Mail } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Home, Plus, User as UserIcon, Bookmark, Settings as SettingsIcon, Search, ArrowLeft, Users, LogOut, Bell, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useSession, useNotifications, useLogout } from "@/lib/hooks";
 import { OpyCampusLogo } from "./opycampus-logo";
 import { ThemeToggle } from "./theme-toggle";
 import { UserAvatar, VerifiedBadge } from "./user-avatar";
-import { SparkIcon, CommunityIcon } from "./custom-icons";
+import { CommunityIcon } from "./custom-icons";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,28 +24,37 @@ import { AuthOverlay } from "./auth-overlay";
 interface NavItem {
   key: string;
   label: string;
-  icon: typeof Home | typeof SparkIcon | typeof CommunityIcon;
+  icon: typeof Home | typeof CommunityIcon;
   view: Parameters<ReturnType<typeof useApp.getState>["nav"]>[0];
   match: (v: ReturnType<typeof useApp.getState>["view"]) => boolean;
-  customIcon?: "spark" | "community";
+  customIcon?: "community";
 }
 
+// Nav: Home, Explore, Groups, Messages, Profile
 const NAV: NavItem[] = [
   { key: "home", label: "Home", icon: Home, view: { name: "home" }, match: (v) => v.name === "home" },
   { key: "explore", label: "Explore", icon: Search, view: { name: "explore" }, match: (v) => v.name === "explore" || v.name === "search" || v.name === "tag" },
   { key: "communities", label: "Groups", icon: CommunityIcon, view: { name: "communities" }, match: (v) => v.name === "community" || v.name === "communities", customIcon: "community" },
-  { key: "activity", label: "Activity", icon: Heart, view: { name: "activity" }, match: (v) => v.name === "activity" },
+  { key: "messages", label: "Messages", icon: MessageCircle, view: { name: "messages" }, match: (v) => v.name === "messages" || v.name === "conversation" },
   { key: "profile", label: "Profile", icon: UserIcon, view: { name: "profile", username: "__me__" }, match: (v) => v.name === "profile" },
 ];
 
-function NotificationDot() {
+function NotificationBell({ onClick }: { onClick: () => void }) {
   const { data } = useNotifications();
   const count = data?.unreadCount ?? 0;
-  if (count === 0) return null;
   return (
-    <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-      {count > 9 ? "9+" : count}
-    </span>
+    <button
+      onClick={onClick}
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"
+      aria-label="Notifications"
+    >
+      <Bell className="h-[19px] w-[19px]" />
+      {count > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+          {count > 9 ? "9+" : count}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -70,14 +80,11 @@ function NavButton({
       <span className="relative">
         {item.key === "profile" && avatar ? (
           <UserAvatar name="me" avatarUrl={avatar} size={26} className={cn("ring-2", active ? "ring-foreground" : "ring-transparent")} />
-        ) : item.customIcon === "spark" ? (
-          <SparkIcon filled={active} className="transition-transform group-active:scale-90" />
         ) : item.customIcon === "community" ? (
           <CommunityIcon className="transition-transform group-active:scale-90" />
         ) : (
-          <item.icon className={cn("h-[26px] w-[26px] transition-transform group-active:scale-90", active && item.key !== "activity" && "fill-foreground/10")} />
+          <item.icon className={cn("h-[26px] w-[26px] transition-transform group-active:scale-90", active && "fill-foreground/10")} />
         )}
-        {item.key === "activity" && <NotificationDot />}
       </span>
       <span className={cn("hidden lg:inline", active && "font-semibold")}>{item.label}</span>
     </button>
@@ -89,6 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session, isLoading } = useSession();
   const logoutMut = useLogout();
   const me = session?.user;
+  const [fabVisible, setFabVisible] = useState(true);
 
   const activeItem = NAV.find((n) => n.match(view));
 
@@ -100,9 +108,71 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Scroll-based FAB show/hide — only on home and communities views
+  useEffect(() => {
+    const showFabViews = ["home", "communities", "community"];
+    if (!showFabViews.includes(view.name)) {
+      return;
+    }
+
+    let lastScrollY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 50) {
+        setFabVisible(true);
+      } else if (currentY > lastScrollY && currentY > 100) {
+        // Scrolling down — hide FAB
+        setFabVisible(false);
+      } else if (currentY < lastScrollY) {
+        // Scrolling up — show FAB
+        setFabVisible(true);
+      }
+      lastScrollY = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [view.name]);
+
+  // Hide FAB immediately when leaving home/communities views
+  useEffect(() => {
+    const showFabViews = ["home", "communities", "community"];
+    if (!showFabViews.includes(view.name)) {
+      const t = setTimeout(() => setFabVisible(false), 0);
+      return () => clearTimeout(t);
+    }
+  }, [view.name]);
+
   const desktopNav = (
     <aside className="sticky top-0 hidden h-[100dvh] w-[76px] shrink-0 flex-col border-r border-border px-2.5 py-5 lg:flex xl:w-[244px] xl:px-3">
-      <button onClick={() => nav({ name: "home" })} className="mb-6 flex items-center px-2 transition hover:opacity-80 lg:px-3" aria-label="OpyCampus home">
+      {/* Profile at upper-left */}
+      {me ? (
+        <button
+          onClick={() => goProfile("__me__")}
+          className="mb-4 flex w-full items-center gap-3 rounded-full px-2 py-2 text-left transition hover:bg-accent tap-highlight-none"
+          aria-label="Your profile"
+        >
+          <UserAvatar name={me.name} username={me.username} avatarUrl={me.avatarUrl} size={36} />
+          <div className="hidden min-w-0 flex-1 xl:block">
+            <div className="flex items-center gap-1 truncate text-[14px] font-semibold">
+              <span className="truncate">{me.name}</span>
+              {me.verified && <VerifiedBadge className="h-3.5 w-3.5 text-primary" />}
+            </div>
+            <div className="truncate text-[13px] text-muted-foreground">@{me.username}</div>
+          </div>
+        </button>
+      ) : (
+        <div className="mb-4 flex flex-col gap-2 px-1">
+          <Button variant="default" className="rounded-full" onClick={() => openAuth("login")}>
+            Sign in
+          </Button>
+          <Button variant="secondary" className="rounded-full" onClick={() => openAuth("signup")}>
+            Create account
+          </Button>
+        </div>
+      )}
+
+      {/* Logo centered */}
+      <button onClick={() => nav({ name: "home" })} className="mb-6 flex items-center justify-center px-2 transition hover:opacity-80 lg:px-3" aria-label="OpyCampus home">
         <OpyCampusLogo size={28} />
       </button>
 
@@ -126,14 +196,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Plus className="h-5 w-5 xl:mr-1" />
           <span className="hidden xl:inline">New post</span>
         </Button>
-      ) : (
-        <Button
-          onClick={() => openAuth("signup")}
-          className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 xl:px-0"
-        >
-          <span className="xl:mx-auto">Get started</span>
-        </Button>
-      )}
+      ) : null}
 
       <div className="mt-auto pt-4">
         <div className="mb-1 flex justify-end px-1 lg:hidden xl:flex">
@@ -150,15 +213,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ) : me ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-3 rounded-full px-2 py-2 text-left transition hover:bg-accent tap-highlight-none" aria-label="Account menu">
-                <UserAvatar name={me.name} username={me.username} avatarUrl={me.avatarUrl} size={36} />
-                <div className="hidden min-w-0 flex-1 xl:block">
-                  <div className="flex items-center gap-1 truncate text-[14px] font-semibold">
-                    <span className="truncate">{me.name}</span>
-                    {me.verified && <VerifiedBadge className="h-3.5 w-3.5 text-primary" />}
-                  </div>
-                  <div className="truncate text-[13px] text-muted-foreground">@{me.username}</div>
-                </div>
+              <button className="flex w-full items-center justify-center rounded-full p-2 transition hover:bg-accent tap-highlight-none" aria-label="Settings menu">
+                <SettingsIcon className="h-5 w-5 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
@@ -166,9 +222,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => nav({ name: "settings" })}>
                 <SettingsIcon className="mr-2 h-4 w-4" /> Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => nav({ name: "messages" })}>
-                <Mail className="mr-2 h-4 w-4" /> Messages
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => nav({ name: "bookmarks" })}>
                 <Bookmark className="mr-2 h-4 w-4" /> Saved posts
@@ -188,16 +241,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : (
-          <div className="flex flex-col gap-2 px-1">
-            <Button variant="default" className="rounded-full" onClick={() => openAuth("login")}>
-              Sign in
-            </Button>
-            <Button variant="secondary" className="rounded-full" onClick={() => openAuth("signup")}>
-              Create account
-            </Button>
-          </div>
-        )}
+        ) : null}
       </div>
     </aside>
   );
@@ -225,6 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <Search className="h-[19px] w-[19px]" />
         </button>
+        <NotificationBell onClick={() => nav({ name: "activity" })} />
         <ThemeToggle />
       </div>
     </header>
@@ -232,7 +277,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const mobileBottom = (
     <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-around border-t border-border bg-background/90 backdrop-blur-md lg:hidden safe-bottom">
-      {NAV.filter((n) => ["home", "explore", "communities", "activity", "profile"].includes(n.key)).map((item) => {
+      {NAV.map((item) => {
         const active = !!activeItem && item.key === activeItem.key;
         return (
           <button
@@ -244,14 +289,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
             aria-label={item.label}
           >
-            {item.customIcon === "spark" ? (
-              <SparkIcon filled={active} className="h-[24px] w-[24px]" />
-            ) : item.customIcon === "community" ? (
+            {item.customIcon === "community" ? (
               <CommunityIcon className="h-[24px] w-[24px]" />
             ) : (
-              <item.icon className={cn("h-[24px] w-[24px]", active && item.key !== "activity" && "fill-foreground/10")} />
+              <item.icon className={cn("h-[24px] w-[24px]", active && "fill-foreground/10")} />
             )}
-            {item.key === "activity" && <NotificationDot />}
             {item.key === "profile" && me && (
               <UserAvatar
                 name="me"
@@ -266,15 +308,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </nav>
   );
 
-  // Floating Action Button (FAB) — mobile only, sits above the bottom nav.
-  // Twitter/X/Instagram-style: centered-right circular button with a Plus.
-  // Uses `calc(env(safe-area-inset-bottom) + 5rem)` so it clears the bottom
-  // nav bar (and the iOS home indicator) on every device.
-  const mobileFab = me ? (
+  // FAB — only shows on home and groups views, with scroll-based show/hide
+  const showFab = me && ["home", "communities", "community"].includes(view.name) && fabVisible;
+
+  const mobileFab = showFab ? (
     <button
       onClick={() => openCompose()}
       style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}
-      className="fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.18)] transition-transform active:scale-95 tap-highlight-none press-down lg:hidden"
+      className="fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.18)] transition-all duration-300 active:scale-95 tap-highlight-none lg:hidden"
       aria-label="New post"
     >
       <Plus className="h-6 w-6" />
@@ -286,7 +327,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {desktopNav}
       <div className="flex min-h-[100dvh] w-full min-w-0 flex-1 flex-col overflow-x-hidden">
         {mobileTop}
-        <main className="w-full min-w-0 flex-1 overflow-x-hidden">{children}</main>
+        <main className="w-full min-w-0 flex-1 overflow-x-hidden pb-16 lg:pb-0">{children}</main>
         {mobileBottom}
         {mobileFab}
       </div>

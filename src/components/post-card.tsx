@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MoreHorizontal, Trash2, Copy, Flag, Quote as QuoteIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useApp, useDeletePost, useSession } from "@/lib/hooks";
+import { useApp, useSession } from "@/lib/hooks";
 import type { Post } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "./user-avatar";
 import { RelativeTime } from "./relative-time";
@@ -11,33 +9,21 @@ import { EngagementBar } from "./engagement-bar";
 import { InstitutionPill } from "./institution-pill";
 import { CommunityIcon } from "./custom-icons";
 import { QuotedPostBlock } from "./quoted-post-block";
-import { CommentSection } from "./comment-section";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 
 function renderContent(content: string) {
-  // Highlight hashtags and @mentions
   const parts = content.split(/(\s+)/);
   return parts.map((part, i) => {
     if (part.startsWith("#")) {
-      const tag = part.replace(/[#.,!?;]+$/g, "");
       return (
-        <span key={i} className="text-primary font-medium hover:underline cursor-pointer">
-          {tag}
+        <span key={i} className="font-medium text-primary/90">
+          {part.replace(/[#.,!?;]+$/g, "")}
         </span>
       );
     }
     if (part.startsWith("@")) {
-      const mention = part.replace(/[^a-zA-Z0-9._-]/g, "").slice(1);
       return (
-        <span key={i} className="text-primary font-medium hover:underline cursor-pointer">
-          @{mention}
+        <span key={i} className="font-medium text-primary/90">
+          {part.replace(/[^a-zA-Z0-9._-]/g, "")}
         </span>
       );
     }
@@ -45,13 +31,8 @@ function renderContent(content: string) {
   });
 }
 
-export function PostCard({ post, showThreadLine = false }: { post: Post; showThreadLine?: boolean }) {
-  const { nav, openCompose } = useApp();
-  const { data: session } = useSession();
-  const delMut = useDeletePost();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  const isOwn = session?.user?.id === post.author.id;
+export function PostCard({ post }: { post: Post }) {
+  const { nav } = useApp();
 
   const onAuthorClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -65,46 +46,23 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
 
   const openPost = () => nav({ name: "post", postId: post.id });
 
-  const onReply = () => {
-    openCompose({
-      replyTo: { id: post.id, authorName: post.author.name, authorUsername: post.author.username },
-    });
-  };
-
-  // Quote repost: opens the compose dialog with the original post quoted
-  // (non-editable block above the text area). The compose box then handles
-  // calling /api/posts/[id]/quote with the user's commentary.
-  const onQuote = () => {
-    openCompose({
-      quoteOf: {
-        id: post.id,
-        authorName: post.author.name,
-        authorUsername: post.author.username,
-        content: post.content,
-        createdAt: post.createdAt,
-      },
-    });
-  };
-
-  // Clicking the quoted block inside a quote post navigates to the
-  // original post's detail page.
   const onQuotedPostClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (post.quoteOf) nav({ name: "post", postId: post.quoteOf.id });
   };
 
-  const copyText = async () => {
-    await navigator.clipboard.writeText(post.content);
-    toast.success("Copied post text");
+  // Comment button navigates to the post detail (thread) page — like Threads app
+  const onComment = () => {
+    nav({ name: "post", postId: post.id });
   };
 
   return (
     <article
       onClick={openPost}
-      className="group relative cursor-pointer px-4 py-3 transition-colors hover:bg-muted/40 active:scale-[0.995] sm:px-5 sm:py-3.5 animate-fade-up tap-highlight-none press-down"
+      className="group relative cursor-pointer px-4 py-3 transition-colors hover:bg-muted/40 active:scale-[0.995] sm:px-5 sm:py-3.5 tap-highlight-none"
     >
       <div className="flex gap-3">
-        {/* Avatar + thread line */}
+        {/* Avatar — no thread line */}
         <div className="flex flex-col items-center">
           <UserAvatar
             name={post.author.name}
@@ -113,7 +71,6 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
             size={44}
             onClick={onAuthorClick}
           />
-          {showThreadLine && <div className="mt-1 w-px flex-1 bg-border" />}
         </div>
 
         {/* Body */}
@@ -132,47 +89,6 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
             <span className="shrink-0 text-[13px] text-muted-foreground hover:underline">
               <RelativeTime date={post.createdAt} />
             </span>
-
-            <div className="ml-auto">
-              <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100 lg:data-[state=open]:opacity-100"
-                    aria-label="Post options"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={copyText}>
-                    <Copy className="mr-2 h-4 w-4" /> Copy text
-                  </DropdownMenuItem>
-                  {/* Quote repost — opens compose dialog with the post quoted */}
-                  <DropdownMenuItem onClick={onQuote}>
-                    <QuoteIcon className="mr-2 h-4 w-4" /> Quote repost
-                  </DropdownMenuItem>
-                  {isOwn ? (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => delMut.mutate(post.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive focus:text-destructive">
-                        <Flag className="mr-2 h-4 w-4" /> Report
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
           </div>
 
           {/* Replying to / context */}
@@ -245,7 +161,7 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
                       src={m.url}
                       alt=""
                       loading="lazy"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
                     />
                   )}
                 </div>
@@ -271,14 +187,10 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
             </div>
           )}
 
-          {/* Engagement */}
-          <div className="mt-2.5 -ml-2.5">
-            <EngagementBar post={post} onReply={onReply} />
+          {/* Engagement — Like, Comment, View, More */}
+          <div className="mt-3 -ml-2">
+            <EngagementBar post={post} onComment={onComment} />
           </div>
-
-          {/* Comments — Facebook/TikTok-style collapsible section. Shows
-              "N comments" by default; click to expand all comments + input. */}
-          <CommentSection post={post} />
         </div>
       </div>
     </article>
