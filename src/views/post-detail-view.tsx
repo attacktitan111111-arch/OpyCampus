@@ -7,6 +7,7 @@ import { RelativeTime } from "@/components/relative-time";
 import { EngagementBar } from "@/components/engagement-bar";
 import { InstitutionPill } from "@/components/institution-pill";
 import { CommunityIcon } from "@/components/custom-icons";
+import { QuotedPostBlock } from "@/components/quoted-post-block";
 import { LoadingState, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
@@ -83,6 +84,17 @@ export function PostDetailView({ postId }: { postId: string }) {
         <div className="mt-3 whitespace-pre-wrap break-words text-[17px] leading-[1.55] text-foreground text-pretty">
           {renderContent(post.content)}
         </div>
+
+        {/* Quoted post (if this is a quote repost) */}
+        {post.quoteOf && (
+          <div className="mt-3">
+            <QuotedPostBlock
+              post={post.quoteOf}
+              variant="card"
+              onClick={() => nav({ name: "post", postId: post.quoteOf!.id })}
+            />
+          </div>
+        )}
 
         {post.media.length > 0 && (
           <div className={`mt-3 grid gap-1 overflow-hidden rounded-2xl border border-border bg-secondary/30 ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
@@ -171,15 +183,21 @@ export function PostDetailView({ postId }: { postId: string }) {
               return (
                 <article key={r.id} className="px-4 py-3 sm:px-5">
                   <div className="flex gap-3">
-                    <UserAvatar
-                      name={r.author.name}
-                      username={r.author.username}
-                      avatarUrl={r.author.avatarUrl}
-                      size={36}
-                      onClick={() => nav({ name: "profile", username: r.author.username })}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 text-[14px]">
+                    {/* Avatar + nested thread line (so child replies visually nest) */}
+                    <div className="flex flex-col items-center">
+                      <UserAvatar
+                        name={r.author.name}
+                        username={r.author.username}
+                        avatarUrl={r.author.avatarUrl}
+                        size={40}
+                        onClick={() => nav({ name: "profile", username: r.author.username })}
+                      />
+                      {/* Thread connector — pulls nested replies toward parent */}
+                      <div className="mt-1 w-px flex-1 bg-border/70" aria-hidden />
+                    </div>
+                    {/* Chat-bubble styled reply card */}
+                    <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-border/70 bg-secondary/30 px-3.5 py-2.5 transition-colors hover:bg-secondary/50">
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] leading-tight">
                         <button onClick={() => nav({ name: "profile", username: r.author.username })} className="flex items-center gap-1 hover:underline">
                           <span className="truncate font-semibold">{r.author.name}</span>
                           {r.author.verified && <VerifiedBadge className="h-3.5 w-3.5 text-primary" />}
@@ -189,14 +207,58 @@ export function PostDetailView({ postId }: { postId: string }) {
                         <span className="text-[13px] text-muted-foreground hover:underline">
                           <RelativeTime date={r.createdAt} />
                         </span>
+                        {r.author.institution && (
+                          <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {r.author.institution.name}
+                          </span>
+                        )}
                         {isMe && (
-                          <span className="ml-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">you</span>
+                          <span className="ml-auto rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">you</span>
                         )}
                       </div>
-                      <div className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-[1.55] text-pretty">
+                      <div className="mt-1.5 whitespace-pre-wrap break-words text-[15px] leading-[1.55] text-pretty">
                         {renderContent(r.content)}
                       </div>
-                      <div className="mt-1.5 -ml-2.5">
+
+                      {/* Media (if any) */}
+                      {r.media.length > 0 && (
+                        <div className={`mt-2 grid gap-1 overflow-hidden rounded-xl border border-border bg-background ${r.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+                          {r.media.map((m, i) => (
+                            <div key={i} className={`relative overflow-hidden bg-background ${r.media.length === 1 ? "max-h-[360px]" : "aspect-square"}`}>
+                              {m.type === "video" ? (
+                                <video src={m.url} controls playsInline preload="metadata" className="h-full w-full object-cover" />
+                              ) : (
+                                <img src={m.url} alt="" className="h-full w-full object-cover" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Reply action row — supports replying to this reply (nested) */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          onClick={() =>
+                            openCompose({
+                              replyTo: { id: r.id, authorName: r.author.name, authorUsername: r.author.username },
+                            })
+                          }
+                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          Reply
+                        </button>
+                        <span className="text-[12px] text-muted-foreground/70">
+                          {r._counts.likes > 0 && (
+                            <>
+                              {r._counts.likes} {r._counts.likes === 1 ? "like" : "likes"}
+                            </>
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Engagement bar (like/save/repost/share) */}
+                      <div className="mt-1 -ml-2">
                         <EngagementBar
                           post={r}
                           onReply={() =>

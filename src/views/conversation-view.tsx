@@ -5,7 +5,7 @@ import { ArrowLeft, Send, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useConversationMessages, useSendMessage } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { EmptyState, SkeletonConversation } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -51,9 +51,11 @@ export function ConversationView({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div className="mx-auto w-full max-w-[640px]">
+      <div className="mx-auto flex h-[calc(100dvh-7.5rem)] w-full max-w-[640px] flex-col lg:h-[calc(100dvh-0px)]">
         <HeaderSkeleton back={back} />
-        <LoadingState className="py-24" />
+        <div className="flex-1 overflow-y-auto scrollbar-thin">
+          <SkeletonConversation />
+        </div>
       </div>
     );
   }
@@ -78,7 +80,7 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] w-full max-w-[640px] flex-col lg:h-screen">
+    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] w-full max-w-[640px] flex-col lg:h-[calc(100dvh-0px)]">
       {/* Header */}
       <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
         <button

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useToggleLike, useToggleBookmark, useToggleRepost } from "@/lib/hooks";
 import type { Post } from "@/lib/hooks";
 import { toast } from "sonner";
+import { LikeBurst } from "./like-burst";
 
 function Counter({ value }: { value: number }) {
   if (value <= 0) return null;
@@ -17,12 +18,14 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
   const bmMut = useToggleBookmark();
   const rpMut = useToggleRepost();
   const [animLike, setAnimLike] = useState(false);
+  const [likeBurstTick, setLikeBurstTick] = useState(0);
 
   const toggleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (likeMut.isPending) return;
     if (!post.liked) {
       setAnimLike(true);
+      setLikeBurstTick((t) => t + 1);
       setTimeout(() => setAnimLike(false), 450);
     }
     likeMut.mutate({ id: post.id, liked: post.liked });
@@ -65,7 +68,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
     >
       <button
         onClick={handleReply}
-        className="group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none"
+        className="group relative flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-sky-500/10 hover:text-sky-500 tap-highlight-none press-down"
         aria-label="Reply"
       >
         <MessageCircle className="h-[18px] w-[18px] transition-transform group-active:scale-90" />
@@ -76,7 +79,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
         onClick={toggleRepost}
         disabled={rpMut.isPending}
         className={cn(
-          "group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none",
+          "group relative flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none press-down",
           post.reposted ? "text-emerald-500" : "text-muted-foreground hover:bg-accent hover:text-foreground"
         )}
         aria-label="Repost"
@@ -89,12 +92,16 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
         onClick={toggleLike}
         disabled={likeMut.isPending}
         className={cn(
-          "group flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none",
+          "group relative flex items-center gap-1.5 rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none press-down",
           post.liked ? "text-rose-500" : "text-muted-foreground hover:bg-accent hover:text-rose-500"
         )}
         aria-label="Like"
       >
-        <Heart className={cn("h-[18px] w-[18px] transition-transform group-active:scale-90", post.liked && "fill-current", animLike && "animate-like-pop")} />
+        <span className="relative inline-flex items-center justify-center">
+          <Heart className={cn("h-[18px] w-[18px] transition-transform group-active:scale-90", post.liked && "fill-current", animLike && "animate-like-pop")} />
+          {/* particle burst radiates from the heart on like */}
+          <LikeBurst trigger={likeBurstTick} />
+        </span>
         <span className="text-[12px] tabular-nums leading-none"><Counter value={post._counts.likes} /></span>
       </button>
 
@@ -103,8 +110,10 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
           onClick={toggleBookmark}
           disabled={bmMut.isPending}
           className={cn(
-            "group flex items-center rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none",
-            post.bookmarked ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            "group relative flex items-center rounded-full px-2.5 py-1.5 transition-colors tap-highlight-none press-down",
+            post.bookmarked
+              ? "text-amber-500"
+              : "text-muted-foreground hover:bg-amber-500/10 hover:text-amber-500"
           )}
           aria-label="Save"
         >
@@ -112,7 +121,7 @@ export function EngagementBar({ post, onReply }: { post: Post; onReply?: () => v
         </button>
         <button
           onClick={share}
-          className="group flex items-center rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none"
+          className="group relative flex items-center rounded-full px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-violet-500 tap-highlight-none press-down"
           aria-label="Share"
         >
           <Share className="h-[17px] w-[17px] transition-transform group-active:scale-90" />

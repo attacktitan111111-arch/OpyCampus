@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Users, School, PenSquare, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useApp, useFeed, useSession } from "@/lib/hooks";
 import { PostCard } from "@/components/post-card";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { EmptyState, SkeletonFeed } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { SparkIcon } from "@/components/custom-icons";
 
@@ -20,21 +21,23 @@ export function HomeFeed() {
   const { data, isLoading, isError } = useFeed(tab);
   const { openCompose } = useApp();
   const { data: session } = useSession();
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const posts = data?.posts ?? [];
   const hasInstitution = !!session?.user?.institution;
 
   return (
-    <div className="mx-auto w-full max-w-[640px]">
+    <div className="mx-auto w-full max-w-[640px] overflow-x-hidden">
       {/* Tabs */}
       <div className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-md lg:top-0">
-        <div className="flex">
+        <div className="relative flex overflow-x-hidden">
           {TABS.map((t) => {
             const active = tab === t.key;
             const disabled = t.key === "institution" && !hasInstitution;
             return (
               <button
                 key={t.key}
+                ref={(el) => { tabRefs.current[t.key] = el; }}
                 disabled={disabled}
                 onClick={() => setTab(t.key)}
                 className={cn(
@@ -46,7 +49,11 @@ export function HomeFeed() {
                 {t.renderIcon(active)}
                 <span>{t.label}</span>
                 {active && (
-                  <span className="absolute inset-x-0 -bottom-px mx-auto h-[3px] w-12 rounded-full bg-primary" />
+                  <motion.span
+                    layoutId="home-tab-underline"
+                    className="absolute inset-x-0 -bottom-px mx-auto h-[3px] w-12 rounded-full bg-primary"
+                    transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.7 }}
+                  />
                 )}
               </button>
             );
@@ -58,7 +65,7 @@ export function HomeFeed() {
       <div className="hidden border-b border-border px-4 py-3 lg:block lg:px-5">
         <button
           onClick={() => openCompose()}
-          className="flex w-full items-center gap-3 rounded-full border border-border bg-secondary/40 px-4 py-2.5 text-left text-muted-foreground transition hover:bg-secondary hover:border-foreground/20"
+          className="flex w-full items-center gap-3 rounded-full border border-border bg-secondary/40 px-4 py-2.5 text-left text-muted-foreground transition hover:bg-secondary hover:border-foreground/20 press-down"
         >
           <PenSquare className="h-4 w-4" />
           <span>Share something with your class…</span>
@@ -67,7 +74,7 @@ export function HomeFeed() {
 
       {/* Feed */}
       {isLoading ? (
-        <LoadingState />
+        <SkeletonFeed count={4} />
       ) : isError ? (
         <EmptyState title="Couldn't load posts" description="Pull to try again — refresh the page." />
       ) : posts.length === 0 ? (

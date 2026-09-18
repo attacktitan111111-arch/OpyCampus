@@ -14,13 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-const DEMO_ACCOUNTS = [
-  { username: "aria.chen", name: "Aria Chen", role: "Student · CS" },
-  { username: "prof.nakamura", name: "Dr. Nakamura", role: "Teacher · CS" },
-  { username: "sana.k", name: "Sana Kapoor", role: "Student · Design" },
-  { username: "dr.owusu", name: "Dr. Owusu", role: "Teacher · Math" },
-];
-
 export function AuthOverlay() {
   const { authOpen, closeAuth } = useApp();
   const mode = authOpen ?? "login";
@@ -91,22 +84,6 @@ function AuthBody({ mode: initialMode }: { mode: "login" | "signup" }) {
         }
       );
     }
-  };
-
-  const quickLogin = (uname: string) => {
-    setMode("login");
-    setIdentifier(uname);
-    setPassword("scholar123");
-    loginMut.mutate(
-      { identifier: uname, password: "scholar123" },
-      {
-        onSuccess: () => {
-          toast.success("Signed in");
-          closeAuth();
-        },
-        onError: (e) => toast.error(e.message || "Sign in failed"),
-      }
-    );
   };
 
   return (
@@ -246,26 +223,6 @@ function AuthBody({ mode: initialMode }: { mode: "login" | "signup" }) {
         >
           {mode === "login" ? "Create an account" : "Sign in"}
         </button>
-      </div>
-
-      {/* Demo quick-login */}
-      <div className="border-t border-border bg-muted/30 px-6 py-4">
-        <p className="mb-2 text-center text-[12px] uppercase tracking-wide text-muted-foreground">
-          Try a demo account · password <span className="font-mono font-medium text-foreground">scholar123</span>
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {DEMO_ACCOUNTS.map((a) => (
-            <button
-              key={a.username}
-              onClick={() => quickLogin(a.username)}
-              disabled={loading}
-              className="flex flex-col items-start rounded-xl border border-border bg-background px-3 py-2 text-left transition hover:border-foreground/30 hover:bg-accent disabled:opacity-50"
-            >
-              <span className="text-[13px] font-semibold leading-tight">{a.name}</span>
-              <span className="text-[11px] text-muted-foreground">{a.role}</span>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

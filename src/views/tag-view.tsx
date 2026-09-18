@@ -3,7 +3,7 @@
 import { ArrowLeft, Hash } from "lucide-react";
 import { useApp, useExplore } from "@/lib/hooks";
 import { PostCard } from "@/components/post-card";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { EmptyState, SkeletonFeed } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 
 export function TagView({ tag }: { tag: string }) {
@@ -30,7 +30,7 @@ export function TagView({ tag }: { tag: string }) {
       </div>
 
       {isLoading ? (
-        <LoadingState />
+        <SkeletonFeed count={4} />
       ) : posts.length === 0 ? (
         <EmptyState
           icon={Hash}

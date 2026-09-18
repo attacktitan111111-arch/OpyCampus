@@ -1,0 +1,38 @@
+{
+  "name": "OpyCampus — Campus Social",
+  "short_name": "OpyCampus",
+  "description": "A clean, minimal social space for students, teachers, and institutions. Share thoughts, photos and videos; follow your classmates; join your school's private feed; and start study groups and clubs.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": ["social", "education", "communication"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New post",
+      "url": "/?action=compose",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Messages",
+      "url": "/?view=messages",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

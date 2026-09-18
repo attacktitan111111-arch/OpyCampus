@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, Trash2, Copy, Flag } from "lucide-react";
+import { MoreHorizontal, Trash2, Copy, Flag, Quote as QuoteIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useDeletePost, useSession } from "@/lib/hooks";
 import type { Post } from "@/lib/hooks";
@@ -10,6 +10,8 @@ import { RelativeTime } from "./relative-time";
 import { EngagementBar } from "./engagement-bar";
 import { InstitutionPill } from "./institution-pill";
 import { CommunityIcon } from "./custom-icons";
+import { QuotedPostBlock } from "./quoted-post-block";
+import { CommentsPreview } from "./comments-preview";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +71,28 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
     });
   };
 
+  // Quote repost: opens the compose dialog with the original post quoted
+  // (non-editable block above the text area). The compose box then handles
+  // calling /api/posts/[id]/quote with the user's commentary.
+  const onQuote = () => {
+    openCompose({
+      quoteOf: {
+        id: post.id,
+        authorName: post.author.name,
+        authorUsername: post.author.username,
+        content: post.content,
+        createdAt: post.createdAt,
+      },
+    });
+  };
+
+  // Clicking the quoted block inside a quote post navigates to the
+  // original post's detail page.
+  const onQuotedPostClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (post.quoteOf) nav({ name: "post", postId: post.quoteOf.id });
+  };
+
   const copyText = async () => {
     await navigator.clipboard.writeText(post.content);
     toast.success("Copied post text");
@@ -77,7 +101,7 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
   return (
     <article
       onClick={openPost}
-      className="group relative cursor-pointer px-4 py-3 transition-colors hover:bg-muted/40 sm:px-5 sm:py-3.5 animate-fade-up tap-highlight-none"
+      className="group relative cursor-pointer px-4 py-3 transition-colors hover:bg-muted/40 active:scale-[0.995] sm:px-5 sm:py-3.5 animate-fade-up tap-highlight-none press-down"
     >
       <div className="flex gap-3">
         {/* Avatar + thread line */}
@@ -124,6 +148,10 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
                   <DropdownMenuItem onClick={copyText}>
                     <Copy className="mr-2 h-4 w-4" /> Copy text
                   </DropdownMenuItem>
+                  {/* Quote repost — opens compose dialog with the post quoted */}
+                  <DropdownMenuItem onClick={onQuote}>
+                    <QuoteIcon className="mr-2 h-4 w-4" /> Quote repost
+                  </DropdownMenuItem>
                   {isOwn ? (
                     <>
                       <DropdownMenuSeparator />
@@ -135,9 +163,12 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
                       </DropdownMenuItem>
                     </>
                   ) : (
-                    <DropdownMenuItem className="text-destructive focus:text-destructive">
-                      <Flag className="mr-2 h-4 w-4" /> Report
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive focus:text-destructive">
+                        <Flag className="mr-2 h-4 w-4" /> Report
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -182,6 +213,13 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
           <div className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-[1.55] text-foreground text-pretty">
             {renderContent(post.content)}
           </div>
+
+          {/* Quoted post (if this is a quote repost) */}
+          {post.quoteOf && (
+            <div className="mt-2.5">
+              <QuotedPostBlock post={post.quoteOf} variant="card" onClick={onQuotedPostClick} />
+            </div>
+          )}
 
           {/* Media (images + videos) */}
           {post.media.length > 0 && (
@@ -237,6 +275,9 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
           <div className="mt-2.5 -ml-2.5">
             <EngagementBar post={post} onReply={onReply} />
           </div>
+
+          {/* Comments preview (only when the post has replies) */}
+          <CommentsPreview post={post} />
         </div>
       </div>
     </article>

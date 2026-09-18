@@ -2,25 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
 import { serializePost } from "@/lib/serializers";
-
-const include = {
-  author: {
-    include: {
-      institution: true,
-      memberships: { include: { institution: true } },
-      followsGiven: { select: { followingId: true } },
-      communityMemberships: { select: { communityId: true } },
-      _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
-    },
-  },
-  institution: { select: { id: true, name: true, handle: true, isPrivate: true } },
-  community: { select: { id: true, name: true, handle: true, isPrivate: true } },
-  parent: { include: { author: { include: { institution: true } } } },
-  likes: { select: { userId: true } },
-  bookmarks: { select: { userId: true } },
-  reposts: { select: { userId: true } },
-  _count: { select: { likes: true, bookmarks: true, reposts: true, replies: true } },
-};
+import { postInclude } from "@/lib/post-include";
 
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
@@ -44,6 +26,7 @@ export async function POST(req: NextRequest) {
   const institutionId = body.institutionId ?? null;
   const communityId = body.communityId ?? null;
   const parentId = body.parentId ?? null;
+  const quoteOfId = body.quoteOfId ?? null;
 
   // Membership checks
   if (institutionId) {
@@ -57,6 +40,14 @@ export async function POST(req: NextRequest) {
     if (!member) return NextResponse.json({ error: "Not a member of this community" }, { status: 403 });
   }
 
+  // Quote repost: validate that the quoted post exists and is not itself a
+  // quote (no recursive quotes).
+  if (quoteOfId) {
+    const quoted = await db.post.findUnique({ where: { id: quoteOfId }, select: { quoteOfId: true, authorId: true } });
+    if (!quoted) return NextResponse.json({ error: "Quoted post not found" }, { status: 404 });
+    if (quoted.quoteOfId) return NextResponse.json({ error: "Can't quote a quote post" }, { status: 400 });
+  }
+
   const post = await db.post.create({
     data: {
       content,
@@ -66,8 +57,9 @@ export async function POST(req: NextRequest) {
       institutionId,
       communityId,
       parentId,
+      quoteOfId: quoteOfId ?? null,
     },
-    include,
+    include: postInclude,
   });
 
   // Notify parent author on reply
@@ -76,6 +68,16 @@ export async function POST(req: NextRequest) {
     if (parent && parent.authorId !== me.id) {
       await db.notification.create({
         data: { type: "reply", toUserId: parent.authorId, actorId: me.id, postId: post.id },
+      });
+    }
+  }
+
+  // Notify quoted post's author
+  if (quoteOfId) {
+    const quoted = await db.post.findUnique({ where: { id: quoteOfId }, select: { authorId: true } });
+    if (quoted && quoted.authorId !== me.id) {
+      await db.notification.create({
+        data: { type: "repost", toUserId: quoted.authorId, actorId: me.id, postId: post.id },
       });
     }
   }

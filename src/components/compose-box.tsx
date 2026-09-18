@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import { ImagePlus, Hash, Globe, Lock, X, Loader2, Video, Film, UploadCloud } from "lucide-react";
+import { ImagePlus, Hash, Globe, Lock, X, Loader2, Film, UploadCloud, Quote as QuoteIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useApp, useCreatePost, useSession, useUploadFile, useInstitutionsSearch, useCommunitiesSearch } from "@/lib/hooks";
+import { useApp, useCreatePost, useQuotePost, useSession, useUploadFile, useInstitutionsSearch, useCommunitiesSearch } from "@/lib/hooks";
 import type { ComposeState } from "@/lib/store";
 import type { MediaItem } from "@/lib/hooks";
 import { UserAvatar } from "./user-avatar";
+import { QuotedPostBlock } from "./quoted-post-block";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -33,7 +34,13 @@ export function ComposeBox() {
         showCloseButton={false}
         className="flex max-h-[92vh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-2xl border-border bg-background p-0 sm:rounded-3xl"
       >
-        {compose.open && <ComposeBody key={(compose.replyTo?.id ?? "new") + (compose.scope?.kind ?? "")} compose={compose} onClose={closeCompose} />}
+        {compose.open && (
+          <ComposeBody
+            key={(compose.replyTo?.id ?? "new") + (compose.quoteOf?.id ?? "") + (compose.scope?.kind ?? "")}
+            compose={compose}
+            onClose={closeCompose}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -42,6 +49,7 @@ export function ComposeBox() {
 function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () => void }) {
   const { data: session } = useSession();
   const createMut = useCreatePost();
+  const quoteMut = useQuotePost();
   const uploadMut = useUploadFile();
   const instQuery = useInstitutionsSearch("");
   const commQuery = useCommunitiesSearch("", true);
@@ -66,6 +74,8 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
   };
 
   const isReply = !!compose.replyTo;
+  const isQuote = !!compose.quoteOf;
+  const isPending = createMut.isPending || quoteMut.isPending;
 
   const myInstitutions = session?.user?.institution
     ? [
@@ -118,15 +128,41 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
   }, [media.length, uploadMut]);
 
   const handleSubmit = () => {
-    if ((!text.trim() && media.length === 0) || createMut.isPending) return;
+    if ((!text.trim() && media.length === 0) || isPending) return;
     const tags = (text.match(/#[\w]+/g) ?? []).map((t) => t.slice(1).toLowerCase());
+    const tagsStr = tags.length ? Array.from(new Set(tags)).join(",") : null;
+
+    if (isQuote && compose.quoteOf) {
+      // Quote repost — requires commentary text.
+      if (!text.trim()) {
+        toast.error("Add your commentary to quote");
+        return;
+      }
+      quoteMut.mutate(
+        {
+          id: compose.quoteOf.id,
+          content: text.trim(),
+          media: media.length ? media : undefined,
+          tags: tagsStr,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Quote posted");
+            onClose();
+          },
+          onError: () => toast.error("Couldn't post quote. Try again."),
+        }
+      );
+      return;
+    }
+
     const institutionId = !isReply && scope?.kind === "institution" ? scope.id : null;
     const communityId = !isReply && scope?.kind === "community" ? scope.id : null;
     createMut.mutate(
       {
         content: text.trim(),
         media: media.length ? media : undefined,
-        tags: tags.length ? Array.from(new Set(tags)).join(",") : null,
+        tags: tagsStr,
         institutionId,
         communityId,
         parentId: compose.replyTo?.id ?? null,
@@ -143,6 +179,8 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
 
   const remaining = MAX - text.length;
   const uploading = uploadMut.isPending;
+  const submitLabel = isQuote ? "Quote" : isReply ? "Reply" : "Post";
+  const headerTitle = isQuote ? "Quote post" : isReply ? "Reply" : "New post";
 
   return (
     <>
@@ -167,20 +205,21 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
         >
           <X className="h-5 w-5" />
         </button>
-        <DialogTitle className="text-center text-[15px] font-semibold">
-          {isReply ? "Reply" : "New post"}
+        <DialogTitle className="flex items-center gap-1.5 text-center text-[15px] font-semibold">
+          {isQuote && <QuoteIcon className="h-4 w-4 text-emerald-500" />}
+          {headerTitle}
         </DialogTitle>
         <Button
           onClick={handleSubmit}
-          disabled={(!text.trim() && media.length === 0) || createMut.isPending}
+          disabled={(!text.trim() && media.length === 0) || isPending}
           size="sm"
           className="h-9 rounded-full bg-primary px-5 text-[13px] font-semibold text-primary-foreground disabled:opacity-40"
         >
-          {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : submitLabel}
         </Button>
       </div>
       <DialogDescription className="sr-only">
-        {isReply ? "Write a reply" : "Write a new post"}
+        {isQuote ? "Write a quote repost" : isReply ? "Write a reply" : "Write a new post"}
       </DialogDescription>
 
       {/* Reply context */}
@@ -201,11 +240,31 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
           />
         </div>
         <div className="min-h-0 flex-1">
+          {/* Quoted post preview (non-editable) */}
+          {isQuote && compose.quoteOf && (
+            <div className="mb-3">
+              <QuotedPostBlock
+                variant="compact"
+                post={{
+                  id: compose.quoteOf.id,
+                  content: compose.quoteOf.content,
+                  author: {
+                    name: compose.quoteOf.authorName,
+                    username: compose.quoteOf.authorUsername,
+                  },
+                }}
+              />
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Adding your commentary above this post
+              </p>
+            </div>
+          )}
+
           <textarea
             ref={focusRef}
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, MAX))}
-            placeholder={isReply ? "Write your reply…" : "What's new?"}
+            placeholder={isQuote ? "Add your thoughts…" : isReply ? "Write your reply…" : "What's new?"}
             className="min-h-[140px] w-full resize-none bg-transparent text-[17px] leading-[1.5] outline-none placeholder:text-muted-foreground"
           />
 
@@ -307,7 +366,8 @@ function ComposeBody({ compose, onClose }: { compose: ComposeState; onClose: () 
             <Hash className="h-[18px] w-[18px]" />
           </button>
 
-          {!isReply && allScopes.length > 0 && (
+          {/* Scope selector — hidden in quote mode (quote posts are always top-level) */}
+          {!isReply && !isQuote && allScopes.length > 0 && (
             <>
               <span className="mx-1 h-5 w-px bg-border" aria-hidden />
               <DropdownMenu>

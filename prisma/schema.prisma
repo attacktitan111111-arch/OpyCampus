@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -142,6 +142,11 @@ model Post {
   community    Community?  @relation(fields: [communityId], references: [id], onDelete: SetNull)
   parent       Post?       @relation("PostReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies      Post[]      @relation("PostReplies")
+  // Quote repost: this post quotes another post (original is "quoteOf"; quotes
+  // of this post are in "quotedBy"). Nullable — most posts are not quotes.
+  quoteOfId    String?
+  quoteOf      Post?       @relation("PostQuote", fields: [quoteOfId], references: [id], onDelete: SetNull)
+  quotedBy     Post[]      @relation("PostQuote")
   likes        Like[]
   bookmarks    Bookmark[]
   reposts      Repost[]

@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const desktopNav = (
-    <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col border-r border-border px-2.5 py-5 lg:flex xl:w-[244px] xl:px-3">
+    <aside className="sticky top-0 hidden h-[100dvh] w-[76px] shrink-0 flex-col border-r border-border px-2.5 py-5 lg:flex xl:w-[244px] xl:px-3">
       <button onClick={() => nav({ name: "home" })} className="mb-6 flex items-center px-2 transition hover:opacity-80 lg:px-3" aria-label="OpyCampus home">
         <OpyCampusLogo size={28} />
       </button>
@@ -263,33 +263,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         );
       })}
-      {me ? (
-        <button
-          onClick={() => openCompose()}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition active:scale-95 tap-highlight-none"
-          aria-label="Compose"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-      ) : (
-        <button
-          onClick={() => openAuth("login")}
-          className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-4 text-primary-foreground shadow-sm transition active:scale-95 tap-highlight-none"
-          aria-label="Sign in"
-        >
-          <span className="text-[13px] font-semibold">Sign in</span>
-        </button>
-      )}
     </nav>
   );
 
+  // Floating Action Button (FAB) — mobile only, sits above the bottom nav.
+  // Twitter/X/Instagram-style: centered-right circular button with a Plus.
+  // Uses `calc(env(safe-area-inset-bottom) + 5rem)` so it clears the bottom
+  // nav bar (and the iOS home indicator) on every device.
+  const mobileFab = me ? (
+    <button
+      onClick={() => openCompose()}
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}
+      className="fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.18)] transition-transform active:scale-95 tap-highlight-none press-down lg:hidden"
+      aria-label="New post"
+    >
+      <Plus className="h-6 w-6" />
+    </button>
+  ) : null;
+
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-[100dvh] bg-background overflow-x-hidden">
       {desktopNav}
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-[100dvh] flex-1 flex-col overflow-x-hidden">
         {mobileTop}
-        <main className="flex-1 pb-16 lg:pb-0">{children}</main>
+        <main className="flex-1 overflow-x-hidden pb-20 lg:pb-0">{children}</main>
         {mobileBottom}
+        {mobileFab}
       </div>
       <ComposeBox />
       <AuthOverlay />

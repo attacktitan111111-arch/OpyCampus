@@ -4,7 +4,7 @@ import { ArrowLeft, Lock, Globe, Users, PenSquare, ShieldCheck, Plus, X } from "
 import { useApp, useCommunity, useCommunityFeed, useJoinCommunity, useSession } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
 import { PostCard } from "@/components/post-card";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { LoadingState, SkeletonFeed, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { CommunityIcon } from "@/components/custom-icons";
 
@@ -162,7 +162,7 @@ export function CommunityView({ handle }: { handle: string }) {
             className="py-16"
           />
         ) : feed.isLoading ? (
-          <LoadingState />
+          <SkeletonFeed count={4} />
         ) : (feed.data?.posts ?? []).length === 0 ? (
           isMember ? (
             <EmptyState

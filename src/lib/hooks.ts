@@ -45,6 +45,8 @@ export interface Post {
   institution: { id: string; name: string; handle: string; isPrivate: boolean } | null;
   community: { id: string; name: string; handle: string; isPrivate: boolean } | null;
   parent: { id: string; author: User } | null;
+  // Quote repost: the original post being quoted (recursive Post shape).
+  quoteOf: Post | null;
   liked: boolean;
   bookmarked: boolean;
   reposted: boolean;
@@ -123,10 +125,13 @@ export function usePost(id: string | null) {
   });
 }
 
-export function useReplies(id: string | null) {
+export function useReplies(id: string | null, limit?: number) {
   return useQuery({
-    queryKey: id ? keys.replies(id) : ["replies", "none"],
-    queryFn: () => api<{ replies: Post[] }>(`/api/posts/${id}/replies`),
+    queryKey: id ? keys.replies(id, limit) : ["replies", "none"],
+    queryFn: () =>
+      api<{ replies: Post[] }>(
+        `/api/posts/${id}/replies${limit ? `?limit=${limit}` : ""}`
+      ),
     enabled: !!id,
   });
 }
@@ -230,13 +235,34 @@ export function useBookmarks() {
 export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { content: string; media?: MediaItem[]; tags?: string | null; institutionId?: string | null; communityId?: string | null; parentId?: string | null }) =>
+    mutationFn: (body: { content: string; media?: MediaItem[]; tags?: string | null; institutionId?: string | null; communityId?: string | null; parentId?: string | null; quoteOfId?: string | null }) =>
       api<{ post: Post }>("/api/posts", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["user-posts"] });
       qc.invalidateQueries({ queryKey: ["institution-feed"] });
       qc.invalidateQueries({ queryKey: ["community-feed"] });
+    },
+  });
+}
+
+/**
+ * Quote a post — creates a new top-level Post authored by the current user
+ * whose `quoteOfId` points at the original post. The user must provide
+ * commentary text (no commentary = use the plain repost toggle instead).
+ */
+export function useQuotePost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, content, media, tags }: { id: string; content: string; media?: MediaItem[]; tags?: string | null }) =>
+      api<{ post: Post }>(`/api/posts/${id}/quote`, {
+        method: "POST",
+        body: JSON.stringify({ content, media, tags }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["user-posts"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }

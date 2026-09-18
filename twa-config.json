@@ -1,0 +1,29 @@
+{
+  "packageId": "app.opycampus",
+  "host": "opycampus.app",
+  "name": "OpyCampus",
+  "themeColor": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#000000",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconFile": "public/icon-512.png",
+  "maskableIconFile": "public/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    { "name": "New post", "shortName": "Post", "url": "/?action=compose" },
+    { "name": "Messages", "shortName": "DMs", "url": "/?view=messages" },
+    { "name": "Explore", "shortName": "Explore", "url": "/?view=explore" }
+  ],
+  "generatorSignatures": ["OpyCampus"],
+  "webManifestUrl": "https://opycampus.app/manifest.json"
+}

@@ -5,7 +5,7 @@ import { ArrowLeft, MessageCircle, PenSquare, Search, X } from "lucide-react";
 import { useApp, useConversations, useUsersSearch, useStartConversation, useSession } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
 import { RelativeTime } from "@/components/relative-time";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { LoadingState, EmptyState, SkeletonConversations } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,7 +48,7 @@ export function MessagesView() {
       <HeaderBar back={back} onNew={() => setNewOpen(true)} />
 
       {isLoading ? (
-        <LoadingState />
+        <SkeletonConversations count={5} />
       ) : conversations.length === 0 ? (
         <EmptyState
           icon={MessageCircle}

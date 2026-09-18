@@ -3,7 +3,7 @@
 import { Bookmark, ArrowLeft } from "lucide-react";
 import { useApp, useBookmarks } from "@/lib/hooks";
 import { PostCard } from "@/components/post-card";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { SkeletonFeed, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 
 export function BookmarksView() {
@@ -21,7 +21,7 @@ export function BookmarksView() {
       </div>
 
       {isLoading ? (
-        <LoadingState />
+        <SkeletonFeed count={4} />
       ) : posts.length === 0 ? (
         <EmptyState
           icon={Bookmark}

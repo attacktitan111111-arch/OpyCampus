@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useApp, useExplore, useUsersSearch, useInstitutionsSearch } from "@/lib/hooks";
 import { UserCard } from "@/components/user-card";
 import { PostCard } from "@/components/post-card";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { LoadingState, EmptyState, SkeletonExploreCard, SkeletonFeed, Shimmer } from "@/components/view-helpers";
 import { InstitutionCard } from "@/components/institution-card";
 
 export function ExploreView({ initialQuery }: { initialQuery?: string }) {
@@ -82,7 +82,23 @@ function ExploreHome({
   return (
     <div className="animate-fade-in">
       {loading ? (
-        <LoadingState />
+        <>
+          <section className="border-b border-border">
+            <SkeletonExploreCard />
+          </section>
+          <section className="border-b border-border px-4 py-3">
+            <div className="grid grid-cols-2 gap-3">
+              <SkeletonExploreCard />
+              <SkeletonExploreCard />
+            </div>
+          </section>
+          <section>
+            <div className="px-4 py-3">
+              <Shimmer className="h-4 w-32" />
+            </div>
+            <SkeletonFeed count={3} />
+          </section>
+        </>
       ) : (
         <>
           {/* Trending topics */}

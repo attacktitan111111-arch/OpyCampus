@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, ArrowLeft, MapPin, MessageCircle, Heart, Grid3x3, Building2, Globe, Repeat2, Mail } from "lucide-react";
+import { CalendarDays, ArrowLeft, MapPin, Heart, Grid3x3, Building2, Globe, Repeat2, Mail, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   useApp,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
 import { PostCard } from "@/components/post-card";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { EmptyState, SkeletonFeed, SkeletonProfile } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { InstitutionPill } from "@/components/institution-pill";
 import { format } from "date-fns";
@@ -41,6 +42,75 @@ function roleLabel(role: string) {
   }
 }
 
+function roleBadgeClass(role: string) {
+  switch (role) {
+    case "teacher":
+      // Teachers — amber (warm, authoritative)
+      return "bg-amber-500/15 text-amber-600 dark:text-amber-300";
+    case "institution_admin":
+      // Admins — sky (trusted, official)
+      return "bg-sky-500/15 text-sky-600 dark:text-sky-300";
+    default:
+      // Students — violet (creative, default role)
+      return "bg-violet-500/15 text-violet-600 dark:text-violet-300";
+  }
+}
+
+/**
+ * Premium gradient cover — used when the user has no cover photo.
+ * Picks a deterministic gradient based on the username so each user has a
+ * unique-feeling cover. The gradient is animated (slow pan) for a hint of life.
+ */
+function GradientCover({ username }: { username?: string }) {
+  const palettes = [
+    "from-indigo-500/30 via-purple-500/20 to-fuchsia-500/30",
+    "from-sky-500/30 via-cyan-500/20 to-emerald-500/25",
+    "from-amber-400/30 via-orange-500/20 to-rose-500/25",
+    "from-emerald-500/30 via-teal-500/20 to-cyan-500/25",
+    "from-rose-500/30 via-pink-500/20 to-purple-500/25",
+    "from-blue-500/30 via-indigo-500/20 to-violet-500/25",
+  ];
+  const seed = (username ?? "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const grad = palettes[seed % palettes.length];
+  return (
+    <div
+      className={cn(
+        "relative h-28 w-full bg-gradient-to-br sm:h-36 animate-gradient-pan",
+        grad
+      )}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_60%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(0,0,0,0.08),transparent_60%)]" />
+    </div>
+  );
+}
+
+/**
+ * Compute a profile completion percentage (0–100) based on which fields are set.
+ * Used to show a "Your profile is X% complete" nudge for the signed-in user.
+ */
+function completionPct(user: {
+  avatarUrl?: string | null;
+  coverUrl?: string | null;
+  bio?: string | null;
+  department?: string | null;
+  location?: string | null;
+  website?: string | null;
+  institution?: { id?: string } | null;
+}): number {
+  const fields = [
+    !!user.avatarUrl,
+    !!user.coverUrl,
+    !!user.bio?.trim(),
+    !!user.department?.trim(),
+    !!user.location?.trim(),
+    !!user.website?.trim(),
+    !!user.institution?.id,
+  ];
+  const done = fields.filter(Boolean).length;
+  return Math.round((done / fields.length) * 100);
+}
+
 export function ProfileView({ username }: { username: string }) {
   const { nav, back, canBack } = useApp();
   const { data, isLoading, isError } = useProfile(username);
@@ -55,7 +125,7 @@ export function ProfileView({ username }: { username: string }) {
   const isMe = data?.isMe;
   const isFollowing = data?.isFollowing;
 
-  if (isLoading) return <LoadingState className="py-24" />;
+  if (isLoading) return <SkeletonProfile />;
   if (isError || !user)
     return (
       <EmptyState
@@ -92,12 +162,15 @@ export function ProfileView({ username }: { username: string }) {
   const activeList = tab === "reposts" ? (reposts.data?.posts ?? []) : (posts.data?.posts ?? []);
   const activeLoading = tab === "reposts" ? reposts.isLoading : posts.isLoading;
 
+  const completion = isMe ? completionPct(user) : 0;
+  const missingCover = !user.coverUrl;
+
   return (
-    <div className="mx-auto w-full max-w-[640px] pb-4">
-      {/* Header — minimal context bar (no duplicate of name). The body shows the full name + verified badge. */}
+    <div className="mx-auto w-full max-w-[640px] pb-4 animate-fade-in overflow-x-hidden">
+      {/* Header — minimal context bar */}
       <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
         {canBack() && (
-          <button onClick={back} className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Back">
+          <button onClick={back} className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none press-down" aria-label="Back">
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
@@ -107,12 +180,18 @@ export function ProfileView({ username }: { username: string }) {
         </div>
       </div>
 
-      {/* Cover photo (if any) */}
-      {user.coverUrl ? (
-        <div className="relative h-28 w-full bg-gradient-to-br from-primary/15 to-primary/5 sm:h-36">
-          <img src={user.coverUrl} alt="" className="h-full w-full object-cover" />
-        </div>
-      ) : null}
+      {/* Cover photo (uploaded image, gradient choice, or animated fallback) */}
+      <div className="relative overflow-hidden">
+        {user.coverUrl && user.coverUrl.startsWith("grad://") ? (
+          <div className={cn("h-28 w-full bg-gradient-to-br sm:h-36 animate-gradient-pan", user.coverUrl.slice("grad://".length))} />
+        ) : user.coverUrl ? (
+          <div className="h-28 w-full sm:h-36">
+            <img src={user.coverUrl} alt="" className="h-full w-full object-cover" />
+          </div>
+        ) : (
+          <GradientCover username={user.username} />
+        )}
+      </div>
 
       {/* Profile body — full name + verified badge + bio live here (single source of truth) */}
       <div className="px-4 pt-5 sm:px-5">
@@ -122,13 +201,13 @@ export function ProfileView({ username }: { username: string }) {
             username={user.username}
             avatarUrl={user.avatarUrl}
             size={76}
-            className={cn("ring-4 ring-background", user.coverUrl && "-mt-10")}
+            className={cn("ring-4 ring-background shadow-sm", user.coverUrl && "-mt-10")}
           />
           <div className="flex items-center gap-2">
             {isMe ? (
               <Button
                 variant="secondary"
-                className="rounded-full font-semibold"
+                className="rounded-full font-semibold press-down"
                 onClick={() => nav({ name: "edit-profile" })}
               >
                 Edit profile
@@ -138,7 +217,7 @@ export function ProfileView({ username }: { username: string }) {
                 <button
                   onClick={handleMessage}
                   disabled={startConvMut.isPending}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent disabled:opacity-50 tap-highlight-none"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent disabled:opacity-50 tap-highlight-none press-down"
                   aria-label="Message"
                   title="Message"
                 >
@@ -146,7 +225,7 @@ export function ProfileView({ username }: { username: string }) {
                 </button>
                 <Button
                   variant={isFollowing ? "secondary" : "default"}
-                  className="rounded-full px-6 font-semibold"
+                  className="rounded-full px-6 font-semibold press-down"
                   disabled={followMut.isPending}
                   onClick={handleFollow}
                 >
@@ -167,12 +246,16 @@ export function ProfileView({ username }: { username: string }) {
 
         {user.bio && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-pretty">{user.bio}</p>}
 
-        {/* Role + institution */}
+        {/* Role + institution + department */}
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 font-medium capitalize">
+          <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold capitalize", roleBadgeClass(user.role))}>
             {roleLabel(user.role)}
           </span>
-          {user.department && <span className="inline-flex items-center gap-1">{user.department}</span>}
+          {user.department && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1">
+              {user.department}
+            </span>
+          )}
           {user.institution && (
             <button onClick={() => nav({ name: "institution", handle: user.institution!.handle })} className="inline-flex">
               <InstitutionPill institution={user.institution} />
@@ -207,28 +290,52 @@ export function ProfileView({ username }: { username: string }) {
           )}
         </div>
 
-        {/* Counts — clickable */}
-        <div className="mt-3 flex items-center gap-5 text-[14px]">
-          <button
+        {/* Stats card — Following / Followers / Posts in a single rounded card */}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <StatCell
+            label="Posts"
+            value={user._counts.posts}
+            onClick={undefined}
+          />
+          <StatCell
+            label="Following"
+            value={user._counts.followsGiven}
             onClick={() => nav({ name: "follows", username, tab: "following" })}
-            className="hover:underline tap-highlight-none"
-          >
-            <span className="font-semibold">{user._counts.followsGiven}</span>{" "}
-            <span className="text-muted-foreground">Following</span>
-          </button>
-          <button
+          />
+          <StatCell
+            label="Followers"
+            value={user._counts.followsRecv}
             onClick={() => nav({ name: "follows", username, tab: "followers" })}
-            className="hover:underline tap-highlight-none"
-          >
-            <span className="font-semibold">{user._counts.followsRecv}</span>{" "}
-            <span className="text-muted-foreground">Followers</span>
-          </button>
+          />
         </div>
+
+        {/* Profile completion nudge — only for the signed-in user */}
+        {isMe && completion < 100 && (
+          <div className="mt-4 rounded-2xl border border-border bg-secondary/30 p-3.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <p className="text-[13px] font-medium text-foreground">
+                Your profile is {completion}% complete
+              </p>
+              <span className="ml-auto text-[12px] text-muted-foreground">
+                {missingCover ? "Add a cover photo" : "Add a bio"}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
+              <motion.div
+                className="h-full rounded-full bg-primary"
+                initial={{ width: 0 }}
+                animate={{ width: `${completion}%` }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
       <div className="sticky top-[6.5rem] z-10 mt-4 border-b border-border bg-background/80 backdrop-blur-md lg:top-0">
-        <div className="flex">
+        <div className="relative flex">
           {TABS.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
@@ -243,7 +350,13 @@ export function ProfileView({ username }: { username: string }) {
               >
                 <Icon className="h-4 w-4 lg:hidden" />
                 <span>{t.label}</span>
-                {active && <span className="absolute inset-x-0 -bottom-px mx-auto h-[3px] w-10 rounded-full bg-primary" />}
+                {active && (
+                  <motion.span
+                    layoutId="profile-tab-underline"
+                    className="absolute inset-x-0 -bottom-px mx-auto h-[3px] w-10 rounded-full bg-primary"
+                    transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.7 }}
+                  />
+                )}
               </button>
             );
           })}
@@ -252,7 +365,7 @@ export function ProfileView({ username }: { username: string }) {
 
       {/* Posts / Reposts / Likes */}
       {activeLoading ? (
-        <LoadingState />
+        <SkeletonFeed count={3} />
       ) : activeList.length === 0 ? (
         tab === "reposts" ? (
           <EmptyState icon={Repeat2} title="No reposts yet" description={`Posts ${isMe ? "you've" : `@${user.username} has`} reposted will appear here.`} />
@@ -275,5 +388,34 @@ export function ProfileView({ username }: { username: string }) {
 
       <div className="h-20" />
     </div>
+  );
+}
+
+function StatCell({
+  label,
+  value,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  onClick?: () => void;
+}) {
+  const content = (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-xl border border-border bg-secondary/20 px-2 py-2.5 transition",
+        onClick && "cursor-pointer hover:bg-secondary/40 press-down"
+      )}
+    >
+      <span className="text-[16px] font-bold leading-none tabular-nums text-foreground">{value}</span>
+      <span className="mt-1 text-[12px] text-muted-foreground">{label}</span>
+    </div>
+  );
+  return onClick ? (
+    <button onClick={onClick} className="tap-highlight-none">
+      {content}
+    </button>
+  ) : (
+    content
   );
 }

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { useApp, useInstitution, useInstitutionFeed, useJoinInstitution, useSession } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
 import { PostCard } from "@/components/post-card";
-import { LoadingState, EmptyState } from "@/components/view-helpers";
+import { LoadingState, SkeletonFeed, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 
 const typeLabel: Record<string, string> = {
@@ -175,7 +175,7 @@ export function InstitutionView({ handle }: { handle: string }) {
             className="py-16"
           />
         ) : feed.isLoading ? (
-          <LoadingState />
+          <SkeletonFeed count={4} />
         ) : (feed.data?.posts ?? []).length === 0 ? (
           isMember ? (
             <EmptyState

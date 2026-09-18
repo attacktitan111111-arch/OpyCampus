@@ -1,16 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Camera, Loader2, MapPin, Globe, Building2, Check } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, MapPin, Globe, Building2, Check, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import { useApp, useSession, useUpdateProfile, useUploadFile } from "@/lib/hooks";
 import type { User } from "@/lib/hooks";
 import { UserAvatar } from "@/components/user-avatar";
 import { LoadingState, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const BIO_MAX = 160;
 const NAME_MAX = 60;
+
+/** Curated gradient covers for users who haven't uploaded one. */
+const GRADIENT_COVERS = [
+  "from-indigo-500 via-purple-500 to-fuchsia-500",
+  "from-sky-500 via-cyan-500 to-emerald-500",
+  "from-amber-400 via-orange-500 to-rose-500",
+  "from-emerald-500 via-teal-500 to-cyan-500",
+  "from-rose-500 via-pink-500 to-purple-500",
+  "from-blue-500 via-indigo-500 to-violet-500",
+];
 
 export function EditProfileView() {
   const { back, openAuth } = useApp();
@@ -89,6 +101,15 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
     }
   };
 
+  const pickGradientCover = (gradient: string) => {
+    // Store the gradient as a fake URL with a "grad://" prefix so the API can
+    // persist it as coverUrl and the profile view can detect it on render.
+    const fakeUrl = `grad://${gradient}`;
+    setCoverUrl(fakeUrl);
+    updateMut.mutate({ coverUrl: fakeUrl });
+    toast.success("Cover updated");
+  };
+
   const dirty =
     name !== (me.name ?? "") ||
     bio !== (me.bio ?? "") ||
@@ -119,8 +140,25 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
     );
   };
 
+  // Compute profile completion percentage
+  const completionFields = [
+    !!avatarUrl,
+    !!coverUrl,
+    !!bio.trim(),
+    !!department.trim(),
+    !!location.trim(),
+    !!website.trim(),
+    !!me.institution,
+  ];
+  const completion = Math.round(
+    (completionFields.filter(Boolean).length / completionFields.length) * 100
+  );
+
+  const isGradientCover = coverUrl?.startsWith("grad://");
+  const gradientClass = isGradientCover ? coverUrl!.slice("grad://".length) : null;
+
   return (
-    <div className="mx-auto w-full max-w-[640px] pb-24">
+    <div className="mx-auto w-full max-w-[640px] pb-24 animate-fade-in">
       <HeaderBar
         back={back}
         title="Edit profile"
@@ -128,7 +166,7 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
           <Button
             onClick={save}
             disabled={!dirty || updateMut.isPending}
-            className="rounded-full px-5 font-semibold"
+            className="rounded-full px-5 font-semibold press-down"
           >
             {updateMut.isPending ? (
               <>
@@ -143,11 +181,17 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
         }
       />
 
-      {/* Cover photo */}
-      <div className="relative h-36 w-full bg-gradient-to-br from-primary/15 to-primary/5 sm:h-44">
+      {/* Cover photo — uploaded image OR selected gradient OR fallback gradient */}
+      <div className="relative h-36 w-full sm:h-44">
         {coverUrl ? (
-          <img src={coverUrl} alt="Cover" className="h-full w-full object-cover" />
-        ) : null}
+          isGradientCover ? (
+            <div className={cn("h-full w-full bg-gradient-to-br animate-gradient-pan", gradientClass)} />
+          ) : (
+            <img src={coverUrl} alt="Cover" className="h-full w-full object-cover" />
+          )
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-primary/15 to-primary/5 animate-gradient-pan" />
+        )}
         <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/0 transition hover:bg-black/10">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-background/85 px-3 py-1.5 text-[13px] font-medium text-foreground shadow-sm backdrop-blur">
             <Camera className="h-3.5 w-3.5" /> {coverUrl ? "Change cover" : "Add cover"}
@@ -168,6 +212,36 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         )}
+      </div>
+
+      {/* Gradient cover options */}
+      <div className="px-4 pt-3 sm:px-5">
+        <p className="mb-2 text-[12px] font-medium text-muted-foreground">
+          Or pick a gradient cover
+        </p>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          {GRADIENT_COVERS.map((g) => {
+            const selected = gradientClass === g;
+            return (
+              <button
+                key={g}
+                onClick={() => pickGradientCover(g)}
+                className={cn(
+                  "relative h-12 w-20 shrink-0 rounded-xl bg-gradient-to-br transition tap-highlight-none press-down",
+                  g,
+                  selected ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : "ring-1 ring-border hover:ring-foreground/30"
+                )}
+                aria-label={`Pick gradient ${g}`}
+              >
+                {selected && (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Check className="h-4 w-4 text-white drop-shadow" />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Avatar */}
@@ -199,6 +273,33 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
               />
             </label>
           </div>
+        </div>
+      </div>
+
+      {/* Profile completion indicator */}
+      <div className="px-4 pt-4 sm:px-5">
+        <div className="rounded-2xl border border-border bg-secondary/30 p-3.5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <p className="text-[13px] font-medium text-foreground">
+              Profile {completion}% complete
+            </p>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
+            <motion.div
+              className="h-full rounded-full bg-primary"
+              initial={{ width: 0 }}
+              animate={{ width: `${completion}%` }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </div>
+          {completion < 100 && (
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              {!bio.trim() && "Add a bio · "}
+              {!coverUrl && "Pick a cover photo · "}
+              {!department.trim() && "Add your department"}
+            </p>
+          )}
         </div>
       </div>
 
@@ -269,7 +370,7 @@ function HeaderBar({ back, title, right }: { back: () => void; title: string; ri
     <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
       <button
         onClick={back}
-        className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"
+        className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none press-down"
         aria-label="Back"
       >
         <ArrowLeft className="h-5 w-5" />

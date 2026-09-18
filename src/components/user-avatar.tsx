@@ -54,9 +54,9 @@ export function UserAvatar({
       onClick={onClick}
       style={{ width: size, height: size }}
       className={cn(
-        "relative shrink-0 overflow-hidden rounded-full bg-gradient-to-br select-none",
+        "relative shrink-0 overflow-hidden rounded-full bg-gradient-to-br select-none transition-transform",
         grad,
-        onClick && "cursor-pointer tap-highlight-none transition-transform active:scale-[0.97]",
+        onClick && "cursor-pointer tap-highlight-none transition-[transform,box-shadow] duration-200 hover:ring-2 hover:ring-foreground/30 active:scale-[0.97]",
         className
       )}
     >

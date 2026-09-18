@@ -157,6 +157,10 @@ export function serializePost(p: any, currentUserId?: string) {
         }
       : null,
     parent: p.parent ? { id: p.parent.id, author: serializeUser(p.parent.author) } : null,
+    // Quote repost: the original post being quoted. Serialized recursively
+    // (with the same shape as a normal post) so the client can render it as
+    // a clickable quoted block.
+    quoteOf: p.quoteOf ? serializePost(p.quoteOf, currentUserId) : null,
     liked: currentUserId
       ? (p.likes ?? []).some((l: any) => l.userId === currentUserId)
       : false,
