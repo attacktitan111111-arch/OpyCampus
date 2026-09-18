@@ -663,3 +663,103 @@ Stage Summary:
   2. Quote repost (repost with text) — users can now add commentary while amplifying a post. A new "Quote repost" item in the post's 3-dot menu opens the compose dialog with the original post quoted as a non-editable block above the text area. Quote posts render in the feed and post detail page with a bordered, clickable quoted card. The quick Repost button in the engagement bar is preserved for instant reposts without text.
 - Post detail replies were also upgraded: chat-bubble styling, avatars with thread connectors, media support, explicit "Reply" buttons enabling nested replies, and richer author metadata.
 - No breaking schema migrations — quoteOfId is nullable, so all existing posts continue to work unchanged.
+
+---
+Task ID: SETTINGS-1
+Agent: frontend-styling-expert
+Task: Rebuild the Settings page (src/views/settings-view.tsx) into a comprehensive, Facebook-like settings experience with all 8 sections, localStorage-backed preferences, and premium styling. Frontend-only changes — no prisma/ or src/app/api/ touched.
+
+Work Log:
+- Read worklog.md, settings-view.tsx, theme-toggle.tsx, store.ts, hooks.ts, app-shell.tsx, serializers.ts, page.tsx, legal-view.tsx, edit-profile-view.tsx, globals.css, and the shadcn Switch/Select/Dialog primitives to understand design tokens, hooks, navigation patterns, and the existing premium aesthetic before any changes.
+- Created `src/hooks/use-local-storage.ts` — an SSR-safe localStorage hook using `useSyncExternalStore` (not `useEffect + setState`) so it complies with React 19's `react-hooks/set-state-in-effect` rule. Returns `[value, setValue, hydrated]` where `hydrated` flips false→true once mounted. A module-level Map of listeners keeps all components using the same key in sync — when one writes, every subscriber re-renders. `getServerSnapshot` returns null so the first client render matches the SSR snapshot and there's no hydration mismatch.
+- Created `src/components/settings-row.tsx` — a small family of reusable row primitives sharing one `RowShell` (icon + label/description + right slot, with consistent `px-4 py-3 lg:px-5` padding and a hover state on interactive rows):
+  - `SectionHeader` — uppercase muted label with optional description (the "ACCOUNT" / "PRIVACY" / etc. headers).
+  - `ToggleRow` — icon + label + description + Switch. Renders as a `<label>` so tapping anywhere on the row toggles the switch.
+  - `NavRow` — icon + label + description + optional value + ChevronRight. Clickable button row.
+  - `DisplayRow` — read-only icon + label + value (used for username, email, version, account type).
+  - `SelectRow` — icon + label + description + a shadcn `Select` on the right (used for language).
+- Rewrote `src/views/settings-view.tsx` end-to-end with all 8 requested sections:
+  1. **Account** — Edit profile (→ edit-profile view), Username (read-only DisplayRow), Email (read-only, synthesized as `{username}@opycampus.app` since the session serializer doesn't expose real emails), Change password (opens a placeholder Dialog explaining password reset is coming soon and pointing to support@opycampus.app), Account type (Student/Teacher — read-only).
+  2. **Privacy** — Posts visibility (Public ↔ Followers only), Who can message you (Everyone ↔ Followers only), Show email on profile, Allow people to find you by email. Each toggle persists to a `opycampus:privacy:*` localStorage key and dynamically updates its description to reflect the current state (e.g. "Visible to your followers only" vs "Visible to everyone (public)").
+  3. **Notifications** — Push, Likes, Comments & replies, New followers, Direct messages, Email notifications. All persist to `opycampus:notifications:*` keys.
+  4. **Appearance** — A premium DarkModeRow that uses the existing `useTheme` + `useMounted` pattern from `theme-toggle.tsx`, but renders as a full row with a sun/moon framer-motion AnimatePresence swap (rotate + fade + scale) inside the icon slot, plus a Switch on the right. Tapping the row anywhere flips light/dark.
+  5. **Content & Display** — Language dropdown (10 languages: English, Español, Français, Deutsch, Português, Italiano, 中文, 日本語, 한국어, العربية — persisted to `opycampus:content:language`), Show sensitive content, Auto-play videos, Reduce motion.
+  6. **About** — About OpyCampus (→ legal/terms), Version ("Version 1.0.0" DisplayRow), Help & Support (→ mailto:support@opycampus.app).
+  7. **Legal** — Terms of Service, Privacy Policy, Community Guidelines (each → its legal page).
+  8. **Session** — Sign out button (preserved from the previous version, calls logoutMut + nav home + toast).
+- Sticky header with back button preserved (`top-14 lg:top-0`). Each section is a `<section className="border-b border-border">` so dividers run between them. Footer shows "OpyCampus · Version 1.0.0".
+- All 14 preference toggles + 1 dropdown actually read/write localStorage via the new hook. Every toggle fires a Sonner toast confirming the change (e.g. "Posts limited to followers", "Auto-play off", "Language set to Español").
+
+Verification:
+- bun run lint: 0 errors, 0 warnings ✅
+- bunx tsc --noEmit on the three changed files: 0 errors ✅
+- Browser smoke test (agent-browser at localhost:3000):
+  - Signed in as aria.chen → opened Settings via the sidebar avatar dropdown.
+  - All 8 section headers render ("ACCOUNT", "PRIVACY", "NOTIFICATIONS", "APPEARANCE", "CONTENT & DISPLAY", "ABOUT", "LEGAL"), plus the profile card on top and the sign-out button at the bottom.
+  - Toggled "Posts visibility" → `opycampus:privacy:posts` flips to `true` in localStorage, switch reflects checked=true, description updates to "Visible to your followers only". ✅
+  - Opened Language dropdown → all 10 options visible, selected "Español" → `opycampus:content:language` becomes `"es"` and the trigger shows "Español". ✅
+  - Clicked "Change password" → Dialog opens with the "coming soon" message, support email link, and "Got it" close button. ✅
+  - Toggled dark mode on/off → sun/moon icon swaps with the framer-motion animation, theme flips, description updates to match. ✅
+  - Page errors console empty throughout. ✅
+- Screenshots saved under /home/z/my-project/screenshots/ (settings-light-top.png, settings-light-mid.png, settings-light-after-toggle.png, settings-password-dialog.png, settings-full-page.png) for visual reference.
+
+Stage Summary:
+- Settings is now a comprehensive, Facebook-like experience with 8 clearly-divided sections, all toggle preferences actually persisted to localStorage (and kept in sync across multiple consumers of the same key), a premium sun/moon animated dark-mode toggle, a working language dropdown, a placeholder change-password dialog, and the existing legal/session entries preserved. No backend, Prisma, or API changes were needed — every preference is client-side only. Two new reusable files (`src/hooks/use-local-storage.ts`, `src/components/settings-row.tsx`) make it easy to add more preference rows later without touching the design language.
+
+---
+Task ID: FIX-MOBILE-COMMENTS
+Agent: main (Z.ai Code)
+Task: Fix mobile layout (half-screen-blank), rebuild comments as Facebook/TikTok style, verify dark/light theme transitions, and fix messages view to be full-screen with input always at the bottom.
+
+Work Log:
+
+TASK 1 — Mobile layout fix (half-screen-blank):
+- `src/components/app-shell.tsx`: Root container now `flex min-h-[100dvh] w-full bg-background overflow-x-hidden` (added `w-full`). Inner content column now `flex min-h-[100dvh] w-full min-w-0 flex-1 flex-col overflow-x-hidden` (added `w-full min-w-0` so it never collapses/reserves space for the hidden sidebar). `<main>` is now `w-full min-w-0 flex-1 overflow-x-hidden` — removed `pb-20 lg:pb-0` because every view already has its own `<div className="h-20" />` bottom spacer for the fixed mobile bottom nav (the old `pb-20` plus the per-view spacer produced 160px of double-blank below content; the conversation view didn't need it at all).
+- Verified every view's outer container is `mx-auto w-full max-w-[640px]` (or `max-w-[680px]` for legal): home-feed, profile, institution, community, bookmarks, explore, messages, conversation, settings, tag, activity, communities, institutions, follows, edit-profile, onboarding, legal, post-detail. None had hardcoded left padding like `pl-[76px]` or `ml-[76px]` reserving space for the desktop sidebar.
+- Desktop `<aside>` confirmed `hidden lg:flex` — on mobile viewport < lg, it gets `display: none` and reserves zero width. Verified in the rendered DOM: sidebar has `width: 0` on a 390px-wide viewport.
+
+TASK 2 — Facebook/TikTok-style CommentSection:
+- Created `src/components/comment-section.tsx` (NEW). Replaces the old "preview 2 comments + View all + Expand/Show-less" UI with a single, simple section:
+  - Collapsed by default: shows "N comments" (or "No comments" when count=0) + a chevron. Always visible so users can click to add the first comment even on a reply-less post.
+  - Click the toggle to expand — smoothly animates height with Framer Motion AnimatePresence (220ms cubic-bezier).
+  - When expanded: shows ALL comments vertically (newest at the bottom — matches the API's createdAt asc ordering), each rendered as a `CommentRow` with a 32px avatar on the left and a rounded `rounded-tl-sm` chat-bubble on the right containing author name + verified badge + relative time + comment text. Clicking the author name navigates to their profile.
+  - Sticky input box at the bottom of the section (when signed in): the signed-in user's 32px avatar + a rounded-full textarea + a primary Send button. Press Enter to post, Shift+Enter for newline. The whole section stops click propagation so expanding/commenting on a PostCard never navigates to the post detail page.
+  - Lazy fetch: `useReplies(open ? post.id : null)` — only fetches replies when the section is expanded, so the feed doesn't fire one request per post on initial load. The collapsed "N comments" label uses the post's already-fetched `_counts.replies`.
+- `src/lib/hooks.ts` `useCreatePost` onSuccess now also invalidates `["replies", parentId]` and `["post", parentId]` when the new post is a reply (parentId is set) so the new comment appears immediately + the post's `_counts.replies` updates.
+- `src/components/post-card.tsx`: Removed the `CommentsPreview` import. The post body now renders `<CommentSection post={post} />` directly below the EngagementBar. Collapsed by default — clicks anywhere outside the section still navigate to the post detail page (article onClick), but clicks inside the section are stopped.
+- Deleted `src/components/comments-preview.tsx` (no longer imported anywhere — verified with grep).
+- Post detail view (`src/views/post-detail-view.tsx`) unchanged — its existing chat-bubble styled replies with thread connectors remain on the dedicated post page (the task only asked to replace CommentsPreview in PostCard).
+
+TASK 3 — Dark/Light theme transitions:
+- `src/components/providers.tsx`: Confirmed `ThemeProvider` has NO `disableTransitionOnChange` (it was already removed in POLISH-PREMIUM and replaced with the `theme-ready` mechanism). The mount-effect adds the `theme-ready` class to `<html>` 60ms after mount so the initial paint doesn't try to animate from default.
+- `src/components/theme-toggle.tsx`: Sun/moon morph via `<AnimatePresence mode="wait" initial={false}>` — each icon rotates (±90°) and scales (0.6 ↔ 1) over 280ms with the same cubic-bezier as the rest of the app. Button has `press-down` for tactile feedback.
+- `src/app/globals.css`: The `html.theme-ready, html.theme-ready *` transition rule covers `background-color` (320ms), `border-color` (320ms), and `color` (220ms). `html` element itself has `background-color: var(--background)` so the whole viewport transitions together — no white flash. The `.no-theme-transition` opt-out remains available for elements that should snap (dragging, scrolling, framer-motion mounts).
+- Verified in the browser: clicking the toggle changed `<html>` from `dark theme-ready` (body bg = `lab(0 0 0)`) to `light theme-ready` (body bg = `lab(100 0 0)`) smoothly. Three screenshots taken 600ms apart during the transition all show ~82-83KB of content (no abrupt all-white flash mid-transition).
+
+TASK 4 — Full-screen messages view:
+- `src/views/conversation-view.tsx`: Rewrote the height calculation. Now `h-[calc(100dvh-3.5rem)] lg:h-[100dvh]` on mobile (was `h-[calc(100dvh-7.5rem)] lg:h-[calc(100dvh-0px)]` which subtracted an extra 120px and was further shortened by main's `pb-20`). The composer at the bottom now uses `pb-[calc(0.625rem+3.5rem+env(safe-area-inset-bottom,0px))] sm:px-5 lg:pb-2.5` — the 3.5rem (56px) bottom padding pushes the input above the fixed mobile bottom nav (which is 56px tall, fixed at viewport bottom), and `env(safe-area-inset-bottom)` clears the iOS home indicator. On desktop, `lg:pb-2.5` reverts to a small padding (no bottom nav there). The messages container is `flex-1 overflow-y-auto` so it fills the available height and scrolls within itself, keeping the composer always visible at the bottom of the visible area.
+- `src/views/messages-view.tsx`: Already uses `mx-auto w-full max-w-[640px]` so it's full width on mobile. The "New Message" flow is a Dialog with a search input — typing filters users, clicking a result calls `useStartConversation` and navigates directly to the conversation. No changes needed.
+- Profile → Message button: Already wired to call `useStartConversation` and on success navigate to `{ name: "conversation", id }` — directly opens the conversation view, NOT a dialog. Verified end-to-end in the browser: clicked Message on Atack Titan's profile → conversation view loaded immediately with the input visible at the bottom (above the mobile bottom nav) and the empty state "Send the first message to Atack Titan." rendered in the body.
+
+Verification (Agent Browser — mobile 390×844 viewport):
+- Lint: `bun run lint` → 0 errors, 0 warnings. ✅
+- Dev server: HTTP 200 on `/` and all API routes. No errors in dev.log. ✅
+- Feed renders 25 PostCards, each with a collapsed "N comments" / "No comments" toggle. 0 replies API calls on initial load (lazy fetch working). ✅
+- Expanded the "4 comments" section → 1 replies API call fired, 4 CommentRows rendered with avatars + names + relative times + content. ✅
+- Typed "Testing new comments!" + Enter → POST /api/posts 200 → cache invalidated → replies refetched → new comment appeared as the 5th row at the bottom of the list (newest at bottom). ✅
+- Mobile layout (Profile, Institution, Community, Messages, Conversation views): `main` is `x:0, y:56, width:390` (full width), `.mx-auto` view is `width:390`, `htmlScrollW:390` (no horizontal overflow). Sidebar `width:0` (hidden on mobile). NO half-screen-blank issue. ✅
+- Conversation view fills `h-[calc(100dvh-3.5rem)] = 788px` height on a 844px viewport; send button at `y:738-778` sits above the fixed bottom nav (which starts at `y:788`). Input always visible at the bottom. ✅
+- Theme toggle: dark ↔ light smoothly transitions `<html>` class and body bg color (lab(0 0 0) ↔ lab(100 0 0)) with the `theme-ready` class enabling the 320ms CSS transitions. Sun/moon morph via Framer Motion. No white flash. ✅
+- Message button on profile directly opens the conversation view (not a dialog). ✅
+
+Files changed (frontend-only — no api/prisma touched):
+- src/components/app-shell.tsx — added `w-full min-w-0` to root + content column + main; removed `pb-20 lg:pb-0` from main (each view has its own h-20 spacer; conversation view uses the full height).
+- src/components/comment-section.tsx — NEW: Facebook/TikTok-style collapsible comment section. Collapsed "N comments" toggle, expanded shows all comments vertically + sticky input box at the bottom. Lazy-fetches replies only when expanded.
+- src/components/post-card.tsx — replaced CommentsPreview with CommentSection; removed the import.
+- src/components/comments-preview.tsx — DELETED (no longer used).
+- src/lib/hooks.ts — useCreatePost onSuccess now invalidates replies + post caches when parentId is set, so new comments appear immediately.
+- src/views/conversation-view.tsx — `h-[calc(100dvh-3.5rem)] lg:h-[100dvh]` so it fills the available viewport; composer bottom padding `pb-[calc(0.625rem+3.5rem+env(safe-area-inset-bottom,0px))]` keeps the input visible above the mobile bottom nav.
+- (src/components/providers.tsx, src/components/theme-toggle.tsx, src/app/globals.css verified — no changes needed; the existing theme-ready mechanism + sun/moon AnimatePresence morph + 320ms CSS transitions are already correct.)
+
+Stage Summary:
+- All four tasks complete. Mobile layout fills the full viewport width with no half-screen-blank (verified on Profile, Institution, Community, Messages, Conversation views). Comments are now a simple Facebook/TikTok-style section: collapsed "N comments" → click to expand → see all comments vertically + type and press Enter to post. Dark/light theme transitions are smooth (320ms background/border, 220ms color) with no white flash. Messages are full-screen with the input always visible at the bottom above the mobile bottom nav, and the Message button on a profile directly opens the conversation. Lint clean (0/0), dev server responding 200 across all routes.

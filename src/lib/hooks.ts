@@ -237,11 +237,18 @@ export function useCreatePost() {
   return useMutation({
     mutationFn: (body: { content: string; media?: MediaItem[]; tags?: string | null; institutionId?: string | null; communityId?: string | null; parentId?: string | null; quoteOfId?: string | null }) =>
       api<{ post: Post }>("/api/posts", { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["user-posts"] });
       qc.invalidateQueries({ queryKey: ["institution-feed"] });
       qc.invalidateQueries({ queryKey: ["community-feed"] });
+      // When the new post is a reply (comment), invalidate the parent's
+      // replies cache so the comment section updates immediately. Also
+      // refresh the parent post itself so its _counts.replies updates.
+      if (vars.parentId) {
+        qc.invalidateQueries({ queryKey: ["replies", vars.parentId] });
+        qc.invalidateQueries({ queryKey: ["post", vars.parentId] });
+      }
     },
   });
 }

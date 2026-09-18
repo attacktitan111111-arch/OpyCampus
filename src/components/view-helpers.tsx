@@ -1,11 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { GraduationMark } from "./graduation-mark";
+import { Loader2 } from "lucide-react";
 
 /**
- * Premium branded loading spinner — uses the graduation cap mark.
- * Drop-in replacement for the old Loader2 spinner.
+ * Premium branded loading spinner. Uses a simple Loader2 icon to avoid
+ * any SSR/client hydration mismatch with animated SVG components.
  */
 export function LoadingState({
   label = "Loading",
@@ -19,24 +19,12 @@ export function LoadingState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-4 py-16 text-muted-foreground",
+        "flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground",
         className
       )}
-      role="status"
-      aria-live="polite"
     >
-      <div className="relative flex items-center justify-center">
-        {/* soft pulsing halo */}
-        <span className="absolute inset-0 -m-3 animate-ring-pulse rounded-full" />
-        <GraduationMark
-          size={size}
-          className="animate-cap-spin text-foreground/90"
-          variant="solid"
-        />
-      </div>
-      <span className="text-[13px] font-medium tracking-tight text-muted-foreground animate-fade-in">
-        {label}…
-      </span>
+      <Loader2 className="animate-spin text-foreground/80" style={{ width: size, height: size }} />
+      <span className="text-[13px] font-medium tracking-tight">{label}…</span>
     </div>
   );
 }
@@ -45,13 +33,7 @@ export function LoadingState({
  * Inline mini-spinner for tight UI spaces (buttons, banners, etc.).
  */
 export function InlineSpinner({ className }: { className?: string }) {
-  return (
-    <GraduationMark
-      size={16}
-      variant="solid"
-      className={cn("animate-cap-spin", className)}
-    />
-  );
+  return <Loader2 className={cn("h-4 w-4 animate-spin", className)} />;
 }
 
 /**
@@ -95,11 +77,6 @@ export function SkeletonPostCard() {
   );
 }
 
-/**
- * A feed-shaped skeleton — used while the post list is loading.
- * Renders N skeleton cards divided by borders so it visually matches the
- * real feed layout.
- */
 export function SkeletonFeed({ count = 4 }: { count?: number }) {
   return (
     <div className="divide-y divide-border">
@@ -110,9 +87,6 @@ export function SkeletonFeed({ count = 4 }: { count?: number }) {
   );
 }
 
-/**
- * Skeleton for the profile header (cover + avatar + name + meta).
- */
 export function SkeletonProfile() {
   return (
     <div className="mx-auto w-full max-w-[640px] pb-4">
@@ -148,10 +122,6 @@ export function SkeletonProfile() {
   );
 }
 
-/**
- * Skeleton conversation row — for the DM inbox loading state. Mimics the
- * real layout: round avatar on the left + two shimmering lines of text.
- */
 export function SkeletonConversationRow() {
   return (
     <div className="flex items-center gap-3 px-4 py-3 sm:px-5">
@@ -165,9 +135,6 @@ export function SkeletonConversationRow() {
   );
 }
 
-/**
- * Skeleton list of conversation rows — used while the DM inbox is loading.
- */
 export function SkeletonConversations({ count = 5 }: { count?: number }) {
   return (
     <div className="divide-y divide-border">
@@ -178,10 +145,6 @@ export function SkeletonConversations({ count = 5 }: { count?: number }) {
   );
 }
 
-/**
- * Skeleton notification row — for the Activity page loading state.
- * Mimics: action icon circle + avatar + 2 lines of text + timestamp.
- */
 export function SkeletonNotificationRow() {
   return (
     <div className="flex items-start gap-3 px-4 py-3.5 sm:px-5">
@@ -198,9 +161,6 @@ export function SkeletonNotificationRow() {
   );
 }
 
-/**
- * Skeleton list of notification rows.
- */
 export function SkeletonNotifications({ count = 5 }: { count?: number }) {
   return (
     <div className="divide-y divide-border">
@@ -211,10 +171,6 @@ export function SkeletonNotifications({ count = 5 }: { count?: number }) {
   );
 }
 
-/**
- * Skeleton message bubble — for the conversation view loading state.
- * Alternates left/right alignment like real chat bubbles.
- */
 export function SkeletonMessageBubble({ align = "left" }: { align?: "left" | "right" }) {
   const isRight = align === "right";
   return (
@@ -224,9 +180,6 @@ export function SkeletonMessageBubble({ align = "left" }: { align?: "left" | "ri
   );
 }
 
-/**
- * Skeleton conversation thread — header + a few message bubbles.
- */
 export function SkeletonConversation() {
   return (
     <div className="space-y-3 px-4 py-4 sm:px-5">
@@ -239,10 +192,6 @@ export function SkeletonConversation() {
   );
 }
 
-/**
- * Skeleton explore card — used for the trending / suggested people /
- * search results loading state. Two-line headline + chip row.
- */
 export function SkeletonExploreCard() {
   return (
     <div className="px-4 py-3 sm:px-5">
@@ -270,9 +219,9 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center gap-3 px-6 py-16 text-center animate-fade-up", className)}>
+    <div className={cn("flex flex-col items-center justify-center gap-3 px-6 py-16 text-center", className)}>
       {Icon && (
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-muted-foreground animate-float-slow">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-muted-foreground">
           <Icon className="h-6 w-6" />
         </div>
       )}

@@ -51,7 +51,7 @@ export function ConversationView({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex h-[calc(100dvh-7.5rem)] w-full max-w-[640px] flex-col lg:h-[calc(100dvh-0px)]">
+      <div className="mx-auto flex h-[calc(100dvh-3.5rem)] w-full max-w-[640px] flex-col lg:h-[100dvh]">
         <HeaderSkeleton back={back} />
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           <SkeletonConversation />
@@ -80,7 +80,7 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-7.5rem)] w-full max-w-[640px] flex-col lg:h-[calc(100dvh-0px)]">
+    <div className="mx-auto flex h-[calc(100dvh-3.5rem)] w-full max-w-[640px] flex-col lg:h-[100dvh]">
       {/* Header */}
       <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
         <button
@@ -116,7 +116,7 @@ export function ConversationView({ id }: { id: string }) {
         )}
       </div>
 
-      {/* Messages */}
+      {/* Messages — flex-1 so it fills the available height and scrolls within itself. */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 sm:px-5">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 py-16 text-center">
@@ -143,8 +143,9 @@ export function ConversationView({ id }: { id: string }) {
         )}
       </div>
 
-      {/* Composer */}
-      <div className="border-t border-border bg-background/85 px-3 py-2.5 backdrop-blur-md safe-bottom sm:px-5">
+      {/* Composer — always visible at the bottom of the conversation column.
+          The pb-[calc(...)] pushes the input above the mobile bottom nav. */}
+      <div className="border-t border-border bg-background/85 px-3 py-2.5 backdrop-blur-md pb-[calc(0.625rem+3.5rem+env(safe-area-inset-bottom,0px))] sm:px-5 lg:pb-2.5">
         <div className="flex items-end gap-2">
           <textarea
             value={text}

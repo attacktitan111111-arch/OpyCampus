@@ -11,7 +11,7 @@ import { EngagementBar } from "./engagement-bar";
 import { InstitutionPill } from "./institution-pill";
 import { CommunityIcon } from "./custom-icons";
 import { QuotedPostBlock } from "./quoted-post-block";
-import { CommentsPreview } from "./comments-preview";
+import { CommentSection } from "./comment-section";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -276,8 +276,9 @@ export function PostCard({ post, showThreadLine = false }: { post: Post; showThr
             <EngagementBar post={post} onReply={onReply} />
           </div>
 
-          {/* Comments preview (only when the post has replies) */}
-          <CommentsPreview post={post} />
+          {/* Comments — Facebook/TikTok-style collapsible section. Shows
+              "N comments" by default; click to expand all comments + input. */}
+          <CommentSection post={post} />
         </div>
       </div>
     </article>

@@ -282,11 +282,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ) : null;
 
   return (
-    <div className="flex min-h-[100dvh] bg-background overflow-x-hidden">
+    <div className="flex min-h-[100dvh] w-full bg-background overflow-x-hidden">
       {desktopNav}
-      <div className="flex min-h-[100dvh] flex-1 flex-col overflow-x-hidden">
+      <div className="flex min-h-[100dvh] w-full min-w-0 flex-1 flex-col overflow-x-hidden">
         {mobileTop}
-        <main className="flex-1 overflow-x-hidden pb-20 lg:pb-0">{children}</main>
+        <main className="w-full min-w-0 flex-1 overflow-x-hidden">{children}</main>
         {mobileBottom}
         {mobileFab}
       </div>
