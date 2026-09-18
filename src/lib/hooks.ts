@@ -367,6 +367,42 @@ export function useToggleFollow() {
   return useMutation({
     mutationFn: ({ username }: { username: string }) =>
       api<{ following: boolean }>(`/api/users/${username}/follow`, { method: "POST" }),
+    onMutate: async ({ username }) => {
+      // Optimistic update — instantly flip the follow state in the profile cache
+      const profileKey = keys.profile(username);
+      const prev = qc.getQueryData<{ user: User; isFollowing: boolean; isMe: boolean }>(profileKey);
+      if (prev) {
+        qc.setQueryData(profileKey, {
+          ...prev,
+          isFollowing: !prev.isFollowing,
+          user: {
+            ...prev.user,
+            _counts: {
+              ...prev.user._counts,
+              followsRecv: prev.user._counts.followsRecv + (prev.isFollowing ? -1 : 1),
+            },
+          },
+        });
+      }
+      // Also update session (following count)
+      const sessionKey = keys.session;
+      const sess = qc.getQueryData<{ user: User | null }>(sessionKey);
+      if (sess?.user) {
+        qc.setQueryData(sessionKey, {
+          ...sess,
+          user: {
+            ...sess.user,
+            followingIds: prev?.isFollowing
+              ? sess.user.followingIds.filter((id: string) => id !== prev.user.id)
+              : [...sess.user.followingIds, prev?.user.id].filter(Boolean),
+            _counts: {
+              ...sess.user._counts,
+              followsGiven: sess.user._counts.followsGiven + (prev?.isFollowing ? -1 : 1),
+            },
+          },
+        });
+      }
+    },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: keys.profile(vars.username) });
       qc.invalidateQueries({ queryKey: keys.session });
@@ -382,6 +418,22 @@ export function useJoinInstitution() {
   return useMutation({
     mutationFn: ({ handle }: { handle: string }) =>
       api<{ member: boolean }>(`/api/institutions/${handle}/join`, { method: "POST" }),
+    onMutate: async ({ handle }) => {
+      const key = keys.institution(handle);
+      const prev = qc.getQueryData<{ institution: Institution }>(key);
+      if (prev?.institution) {
+        qc.setQueryData(key, {
+          institution: {
+            ...prev.institution,
+            isMember: !prev.institution.isMember,
+            _counts: {
+              ...prev.institution._counts,
+              members: prev.institution._counts.members + (prev.institution.isMember ? -1 : 1),
+            },
+          },
+        });
+      }
+    },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: keys.institution(vars.handle) });
       qc.invalidateQueries({ queryKey: keys.institutionFeed(vars.handle) });
@@ -396,12 +448,28 @@ export function useJoinCommunity() {
   return useMutation({
     mutationFn: ({ handle }: { handle: string }) =>
       api<{ member: boolean }>(`/api/communities/${handle}/join`, { method: "POST" }),
+    onMutate: async ({ handle }) => {
+      const key = keys.community(handle);
+      const prev = qc.getQueryData<{ community: Community }>(key);
+      if (prev?.community) {
+        qc.setQueryData(key, {
+          community: {
+            ...prev.community,
+            isMember: !prev.community.isMember,
+            _counts: {
+              ...prev.community._counts,
+              members: prev.community._counts.members + (prev.community.isMember ? -1 : 1),
+            },
+          },
+        });
+      }
+    },
     onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: keys.community(vars.handle) });
       qc.invalidateQueries({ queryKey: keys.communityFeed(vars.handle) });
       qc.invalidateQueries({ queryKey: keys.session });
       qc.invalidateQueries({ queryKey: ["communities"] });
-      toast.success(data.member ? "Joined community" : "Left community");
+      toast.success(data.member ? "Joined" : "Left");
     },
   });
 }
@@ -558,6 +626,24 @@ export function useSendMessage() {
   return useMutation({
     mutationFn: ({ id, content }: { id: string; content: string }) =>
       api<{ message: { id: string; senderId: string; content: string; createdAt: string; isMe: boolean } }>(`/api/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ content }) }),
+    onMutate: async ({ id, content }) => {
+      // Optimistic: instantly add the message to the conversation cache
+      const key = keys.conversationMessages(id);
+      const prev = qc.getQueryData<{ conversation: any; messages: any[] }>(key);
+      if (prev) {
+        const optimisticMsg = {
+          id: `temp-${Date.now()}`,
+          senderId: "me",
+          content,
+          createdAt: new Date().toISOString(),
+          isMe: true,
+        };
+        qc.setQueryData(key, {
+          ...prev,
+          messages: [...prev.messages, optimisticMsg],
+        });
+      }
+    },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: keys.conversationMessages(vars.id) });
       qc.invalidateQueries({ queryKey: keys.conversations });

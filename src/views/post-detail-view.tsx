@@ -151,7 +151,7 @@ export function PostDetailView({ postId }: { postId: string }) {
         </div>
       </article>
 
-      {/* Reply composer trigger */}
+      {/* Comment composer trigger */}
       <div className="border-b border-border px-4 py-3 sm:px-5">
         <button
           onClick={() =>
@@ -162,18 +162,18 @@ export function PostDetailView({ postId }: { postId: string }) {
           className="flex w-full items-center gap-3 rounded-full border border-border bg-secondary/40 px-4 py-2.5 text-left text-muted-foreground transition hover:bg-secondary hover:border-foreground/20"
         >
           <MessageCircle className="h-4 w-4" />
-          <span>Reply to @{post.author.username}…</span>
+          <span>Add a comment…</span>
         </button>
       </div>
 
-      {/* Replies */}
+      {/* Comments */}
       <div>
-        <h2 className="px-4 py-3 text-[15px] font-semibold sm:px-5">Replies</h2>
+        <h2 className="px-4 py-3 text-[15px] font-semibold sm:px-5">Comments</h2>
         {(repliesData?.replies ?? []).length === 0 ? (
           <EmptyState
             icon={MessageCircle}
-            title="No replies yet"
-            description="Start the conversation."
+            title="No comments yet"
+            description="Be the first to comment."
             className="py-12"
           />
         ) : (
