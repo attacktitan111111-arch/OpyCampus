@@ -64,7 +64,7 @@ export function ActivityView() {
   return (
     <div className="w-full">
       {/* Header — title + quick "Message" action on the right */}
-      <div className="lg:sticky lg:top-0 lg:z-10 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+      <div className="sticky top-14 z-20 lg:top-0 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
         <h1 className="text-[15px] font-semibold">Activity</h1>
         <Button
           size="sm"

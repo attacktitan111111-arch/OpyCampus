@@ -367,7 +367,7 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
 
 function HeaderBar({ back, title, right }: { back: () => void; title: string; right?: React.ReactNode }) {
   return (
-    <div className="lg:sticky lg:top-0 lg:z-10 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+    <div className="sticky top-14 z-20 lg:top-0 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
       <button
         onClick={back}
         className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none press-down"

@@ -27,7 +27,7 @@ export function ExploreView({ initialQuery }: { initialQuery?: string }) {
   return (
     <div className="w-full">
       {/* Search header */}
-      <div className="lg:sticky lg:top-0 lg:z-10 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md lg:top-0 lg:px-5">
+      <div className="sticky top-14 z-20 lg:top-0 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md lg:top-0 lg:px-5">
         <div className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-4 py-2.5 transition focus-within:border-foreground/30 focus-within:bg-background">
           <Search className="h-[18px] w-[18px] text-muted-foreground" />
           <input

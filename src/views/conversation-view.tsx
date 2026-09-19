@@ -82,7 +82,7 @@ export function ConversationView({ id }: { id: string }) {
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col lg:h-[100dvh]">
       {/* Header */}
-      <div className="lg:sticky lg:top-0 lg:z-10 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+      <div className="sticky top-14 z-20 lg:top-0 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
         <button
           onClick={back}
           className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"
@@ -143,9 +143,8 @@ export function ConversationView({ id }: { id: string }) {
         )}
       </div>
 
-      {/* Composer — always visible at the bottom of the conversation column.
-          The pb-[calc(...)] pushes the input above the mobile bottom nav. */}
-      <div className="border-t border-border bg-background/85 px-3 py-2.5 backdrop-blur-md pb-[calc(0.625rem+3.5rem+env(safe-area-inset-bottom,0px))] sm:px-5 lg:pb-2.5">
+      {/* Composer — fixed at the bottom, above the mobile bottom nav */}
+      <div className="shrink-0 border-t border-border bg-background px-3 py-2.5 backdrop-blur-md sm:px-5 lg:pb-2.5" style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}>
         <div className="flex items-end gap-2">
           <textarea
             value={text}
@@ -198,7 +197,7 @@ function MessageBubble({
 
 function HeaderSkeleton({ back }: { back: () => void }) {
   return (
-    <div className="lg:sticky lg:top-0 lg:z-10 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+    <div className="sticky top-14 z-20 lg:top-0 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
       <button
         onClick={back}
         className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"

@@ -38,7 +38,7 @@ export function CommunitiesView() {
 
   return (
     <div className="w-full">
-      <div className="lg:sticky lg:top-0 lg:z-10 border-b border-border bg-background/80 backdrop-blur-md lg:top-0">
+      <div className="sticky top-14 z-20 border-b border-border bg-background/90 backdrop-blur-md lg:top-0">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-[18px] font-bold">Groups</h1>
           <Button size="sm" className="rounded-full" onClick={() => setCreateOpen(true)}>

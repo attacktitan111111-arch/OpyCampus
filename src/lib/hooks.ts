@@ -238,13 +238,15 @@ export function useCreatePost() {
     mutationFn: (body: { content: string; media?: MediaItem[]; tags?: string | null; institutionId?: string | null; communityId?: string | null; parentId?: string | null; quoteOfId?: string | null }) =>
       api<{ post: Post }>("/api/posts", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ["feed"] });
-      qc.invalidateQueries({ queryKey: ["user-posts"] });
-      qc.invalidateQueries({ queryKey: ["institution-feed"] });
-      qc.invalidateQueries({ queryKey: ["community-feed"] });
-      // When the new post is a reply (comment), invalidate the parent's
-      // replies cache so the comment section updates immediately. Also
-      // refresh the parent post itself so its _counts.replies updates.
+      // Optimistic: prepend the new post to the feed cache immediately
+      if (!vars.parentId && _data.post) {
+        const feedKey = keys.feed("foryou");
+        const prev = qc.getQueryData<{ posts: Post[]; nextCursor: string | null }>(feedKey);
+        if (prev) {
+          qc.setQueryData(feedKey, { ...prev, posts: [_data.post, ...prev.posts] });
+        }
+      }
+      // Only invalidate replies if it's a comment
       if (vars.parentId) {
         qc.invalidateQueries({ queryKey: ["replies", vars.parentId] });
         qc.invalidateQueries({ queryKey: ["post", vars.parentId] });
@@ -404,11 +406,9 @@ export function useToggleFollow() {
       }
     },
     onSuccess: (_data, vars) => {
+      // Only invalidate the profile — the optimistic update already handles the UI
+      // Don't invalidate session/users/explore/feed — that causes unnecessary refetches
       qc.invalidateQueries({ queryKey: keys.profile(vars.username) });
-      qc.invalidateQueries({ queryKey: keys.session });
-      qc.invalidateQueries({ queryKey: ["users"] });
-      qc.invalidateQueries({ queryKey: ["explore"] });
-      qc.invalidateQueries({ queryKey: keys.feed("following") });
     },
   });
 }

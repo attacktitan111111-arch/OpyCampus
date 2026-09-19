@@ -194,6 +194,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Search className="h-[19px] w-[19px]" />
         </button>
         <NotificationBell onClick={() => nav({ name: "activity" })} />
+        {me ? (
+          <button onClick={() => nav({ name: "settings" })} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Settings">
+            <SettingsIcon className="h-[19px] w-[19px]" />
+          </button>
+        ) : null}
         <ThemeToggle />
       </div>
     </header>
