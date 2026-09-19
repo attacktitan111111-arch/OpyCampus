@@ -158,7 +158,7 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
   const gradientClass = isGradientCover ? coverUrl!.slice("grad://".length) : null;
 
   return (
-    <div className="mx-auto w-full max-w-[640px] pb-24 animate-fade-in">
+    <div className="mx-auto w-full max-w-[640px] pb-24 ">
       <HeaderBar
         back={back}
         title="Edit profile"

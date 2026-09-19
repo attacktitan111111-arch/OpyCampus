@@ -214,7 +214,7 @@ export function SettingsView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[640px] animate-fade-in">
+    <div className="mx-auto w-full max-w-[640px] ">
       <SettingsHeader back={back} />
 
       {/* Profile card */}

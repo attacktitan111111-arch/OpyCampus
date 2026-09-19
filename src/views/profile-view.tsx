@@ -63,19 +63,19 @@ function roleBadgeClass(role: string) {
  */
 function GradientCover({ username }: { username?: string }) {
   const palettes = [
-    "from-indigo-500/30 via-purple-500/20 to-fuchsia-500/30",
-    "from-sky-500/30 via-cyan-500/20 to-emerald-500/25",
-    "from-amber-400/30 via-orange-500/20 to-rose-500/25",
-    "from-emerald-500/30 via-teal-500/20 to-cyan-500/25",
-    "from-rose-500/30 via-pink-500/20 to-purple-500/25",
-    "from-blue-500/30 via-indigo-500/20 to-violet-500/25",
+    "from-indigo-500 via-purple-500 to-fuchsia-500",
+    "from-sky-500 via-cyan-500 to-emerald-500",
+    "from-amber-400 via-orange-500 to-rose-500",
+    "from-emerald-500 via-teal-500 to-cyan-500",
+    "from-rose-500 via-pink-500 to-purple-500",
+    "from-blue-500 via-indigo-500 to-violet-500",
   ];
   const seed = (username ?? "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
   const grad = palettes[seed % palettes.length];
   return (
     <div
       className={cn(
-        "relative h-28 w-full bg-gradient-to-br sm:h-36 animate-gradient-pan",
+        "relative h-32 w-full bg-gradient-to-br sm:h-40 animate-gradient-pan",
         grad
       )}
     >
@@ -166,26 +166,13 @@ export function ProfileView({ username }: { username: string }) {
   const missingCover = !user.coverUrl;
 
   return (
-    <div className="mx-auto w-full max-w-[640px] pb-4 animate-fade-in overflow-x-hidden">
-      {/* Header — minimal context bar */}
-      <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
-        {canBack() && (
-          <button onClick={back} className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none press-down" aria-label="Back">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-semibold leading-tight text-foreground">@{user.username}</p>
-          <p className="text-[12px] text-muted-foreground">{user._counts.posts} posts</p>
-        </div>
-      </div>
-
-      {/* Cover photo (uploaded image, gradient choice, or animated fallback) */}
+    <div className="mx-auto w-full max-w-[640px] pb-4 overflow-x-hidden">
+      {/* Cover photo — full width, no sticky header (mobile top bar has back button already) */}
       <div className="relative overflow-hidden">
         {user.coverUrl && user.coverUrl.startsWith("grad://") ? (
           <div className={cn("h-28 w-full bg-gradient-to-br sm:h-36 animate-gradient-pan", user.coverUrl.slice("grad://".length))} />
         ) : user.coverUrl ? (
-          <div className="h-28 w-full sm:h-36">
+          <div className="h-32 w-full sm:h-40">
             <img src={user.coverUrl} alt="" className="h-full w-full object-cover" />
           </div>
         ) : (
@@ -194,7 +181,7 @@ export function ProfileView({ username }: { username: string }) {
       </div>
 
       {/* Profile body — full name + verified badge + bio live here (single source of truth) */}
-      <div className="px-4 pt-5 sm:px-5">
+      <div className="px-4 pt-4 sm:px-5">
         <div className="flex items-start justify-between gap-4">
           <UserAvatar
             name={user.name}

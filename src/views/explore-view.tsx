@@ -27,7 +27,7 @@ export function ExploreView({ initialQuery }: { initialQuery?: string }) {
   return (
     <div className="mx-auto w-full max-w-[640px]">
       {/* Search header */}
-      <div className="sticky top-0 z-20 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md lg:top-0 lg:px-5">
+      <div className="sticky top-14 z-20 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md lg:top-0 lg:px-5">
         <div className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-4 py-2.5 transition focus-within:border-foreground/30 focus-within:bg-background">
           <Search className="h-[18px] w-[18px] text-muted-foreground" />
           <input
@@ -80,7 +80,7 @@ function ExploreHome({
 }) {
   const { nav } = useApp();
   return (
-    <div className="animate-fade-in">
+    <div className="">
       {loading ? (
         <>
           <section className="border-b border-border">
@@ -209,7 +209,7 @@ function SearchResults({
     );
 
   return (
-    <div className="animate-fade-in">
+    <div className="">
       {users.length > 0 && (
         <section className="border-b border-border">
           <h2 className="px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">People</h2>
