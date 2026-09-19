@@ -148,7 +148,7 @@ export default function Page() {
             />
           </div>
         ) : (
-          <div key={viewKey(view)} className="animate-fade-in">
+          <div key={viewKey(view)}>
             {renderView(view)}
           </div>
         )}
