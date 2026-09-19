@@ -11,13 +11,20 @@ const userInclude = {
   _count: { select: { posts: true, followsGiven: true, followsRecv: true } },
 };
 
+function parseMedia(raw: any) {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+
 // GET messages in a conversation
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Sign in" }, { status: 401 });
   const { id } = await ctx.params;
 
-  // Verify membership
   const member = await db.conversationMember.findUnique({
     where: { conversationId_userId: { conversationId: id, userId: me.id } },
   });
@@ -34,7 +41,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const other = conv.members.find((m) => m.userId !== me.id);
 
-  // Mark as read
   await db.conversationMember.update({
     where: { id: member.id },
     data: { lastReadAt: new Date() },
@@ -49,13 +55,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       id: m.id,
       senderId: m.senderId,
       content: m.content,
+      media: parseMedia(m.media),
       createdAt: m.createdAt,
       isMe: m.senderId === me.id,
     })),
   });
 }
 
-// POST a new message
+// POST a new message (supports text + media)
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Sign in" }, { status: 401 });
@@ -68,11 +75,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const body = await req.json().catch(() => ({}));
   const content = (body.content ?? "").toString().trim();
-  if (!content) return NextResponse.json({ error: "Empty message" }, { status: 400 });
+  const mediaRaw = Array.isArray(body.media) ? body.media.filter((m: any) => m && m.url).slice(0, 4) : [];
+  
+  if (!content && mediaRaw.length === 0) return NextResponse.json({ error: "Empty message" }, { status: 400 });
   if (content.length > 2000) return NextResponse.json({ error: "Too long" }, { status: 400 });
 
+  const media = mediaRaw.map((m: any) => ({
+    url: m.url,
+    type: m.type === "video" ? "video" : m.type === "audio" ? "audio" : m.type === "file" ? "file" : "image",
+    name: m.name ?? undefined,
+  }));
+
   const msg = await db.message.create({
-    data: { conversationId: id, senderId: me.id, content },
+    data: {
+      conversationId: id,
+      senderId: me.id,
+      content: content || "",
+      media: media.length ? JSON.stringify(media) : null,
+    },
   });
 
   await db.conversation.update({ where: { id }, data: { updatedAt: new Date() } });
@@ -82,6 +102,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       id: msg.id,
       senderId: msg.senderId,
       content: msg.content,
+      media,
       createdAt: msg.createdAt,
       isMe: true,
     },

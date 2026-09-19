@@ -616,25 +616,34 @@ export function useStartConversation() {
 export function useConversationMessages(id: string | null) {
   return useQuery({
     queryKey: id ? keys.conversationMessages(id) : ["conv-messages", "none"],
-    queryFn: () => api<{ conversation: { id: string; other: User | null }; messages: { id: string; senderId: string; content: string; createdAt: string; isMe: boolean }[] }>(`/api/conversations/${id}/messages`),
+    queryFn: () => api<{ conversation: { id: string; other: User | null }; messages: MessageItem[] }>(`/api/conversations/${id}/messages`),
     enabled: !!id,
   });
+}
+
+export interface MessageItem {
+  id: string;
+  senderId: string;
+  content: string;
+  media: { url: string; type: "image" | "video" | "audio" | "file"; name?: string }[];
+  createdAt: string;
+  isMe: boolean;
 }
 
 export function useSendMessage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, content }: { id: string; content: string }) =>
-      api<{ message: { id: string; senderId: string; content: string; createdAt: string; isMe: boolean } }>(`/api/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ content }) }),
-    onMutate: async ({ id, content }) => {
-      // Optimistic: instantly add the message to the conversation cache
+    mutationFn: ({ id, content, media }: { id: string; content: string; media?: { url: string; type: string; name?: string }[] }) =>
+      api<{ message: MessageItem }>(`/api/conversations/${id}/messages`, { method: "POST", body: JSON.stringify({ content, media }) }),
+    onMutate: async ({ id, content, media }) => {
       const key = keys.conversationMessages(id);
-      const prev = qc.getQueryData<{ conversation: any; messages: any[] }>(key);
+      const prev = qc.getQueryData<{ conversation: any; messages: MessageItem[] }>(key);
       if (prev) {
-        const optimisticMsg = {
+        const optimisticMsg: MessageItem = {
           id: `temp-${Date.now()}`,
           senderId: "me",
           content,
+          media: (media ?? []) as any,
           createdAt: new Date().toISOString(),
           isMe: true,
         };
