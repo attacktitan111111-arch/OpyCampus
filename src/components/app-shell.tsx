@@ -30,7 +30,6 @@ interface NavItem {
   customIcon?: "community";
 }
 
-// Nav: Home, Explore, Groups, Messages, Profile
 const NAV: NavItem[] = [
   { key: "home", label: "Home", icon: Home, view: { name: "home" }, match: (v) => v.name === "home" },
   { key: "explore", label: "Explore", icon: Search, view: { name: "explore" }, match: (v) => v.name === "explore" || v.name === "search" || v.name === "tag" },
@@ -58,41 +57,8 @@ function NotificationBell({ onClick }: { onClick: () => void }) {
   );
 }
 
-function NavButton({
-  item,
-  active,
-  onClick,
-  avatar,
-}: {
-  item: NavItem;
-  active: boolean;
-  onClick: () => void;
-  avatar?: string | null;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "group flex w-full items-center gap-4 rounded-full px-3 py-2.5 text-[15px] font-medium transition-colors tap-highlight-none",
-        active ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
-      )}
-    >
-      <span className="relative">
-        {item.key === "profile" && avatar ? (
-          <UserAvatar name="me" avatarUrl={avatar} size={26} className={cn("ring-2", active ? "ring-foreground" : "ring-transparent")} />
-        ) : item.customIcon === "community" ? (
-          <CommunityIcon className="transition-transform group-active:scale-90" />
-        ) : (
-          <item.icon className={cn("h-[26px] w-[26px] transition-transform group-active:scale-90", active && "fill-foreground/10")} />
-        )}
-      </span>
-      <span className={cn("hidden lg:inline", active && "font-semibold")}>{item.label}</span>
-    </button>
-  );
-}
-
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { view, nav, back, openCompose, canBack, openAuth, authOpen } = useApp();
+  const { view, nav, back, openCompose, canBack, openAuth } = useApp();
   const { data: session, isLoading } = useSession();
   const logoutMut = useLogout();
   const me = session?.user;
@@ -101,39 +67,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const activeItem = NAV.find((n) => n.match(view));
 
   const goProfile = (username: string) => {
-    if (username === "__me__" && me) {
-      nav({ name: "profile", username: me.username });
-    } else if (username !== "__me__") {
-      nav({ name: "profile", username });
-    }
+    if (username === "__me__" && me) nav({ name: "profile", username: me.username });
+    else if (username !== "__me__") nav({ name: "profile", username });
   };
 
-  // Scroll-based FAB show/hide — only on home and communities views
+  // Scroll-based FAB show/hide
   useEffect(() => {
     const showFabViews = ["home", "communities", "community"];
-    if (!showFabViews.includes(view.name)) {
-      return;
-    }
-
+    if (!showFabViews.includes(view.name)) return;
     let lastScrollY = window.scrollY;
     const handleScroll = () => {
       const currentY = window.scrollY;
-      if (currentY < 50) {
-        setFabVisible(true);
-      } else if (currentY > lastScrollY && currentY > 100) {
-        // Scrolling down — hide FAB
-        setFabVisible(false);
-      } else if (currentY < lastScrollY) {
-        // Scrolling up — show FAB
-        setFabVisible(true);
-      }
+      if (currentY < 50) setFabVisible(true);
+      else if (currentY > lastScrollY && currentY > 100) setFabVisible(false);
+      else if (currentY < lastScrollY) setFabVisible(true);
       lastScrollY = currentY;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [view.name]);
 
-  // Hide FAB immediately when leaving home/communities views
   useEffect(() => {
     const showFabViews = ["home", "communities", "community"];
     if (!showFabViews.includes(view.name)) {
@@ -142,15 +95,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [view.name]);
 
+  // ─── Desktop sidebar ───
   const desktopNav = (
     <aside className="sticky top-0 hidden h-[100dvh] w-[76px] shrink-0 flex-col border-r border-border px-2.5 py-5 lg:flex xl:w-[244px] xl:px-3">
-      {/* Profile at upper-left */}
       {me ? (
-        <button
-          onClick={() => goProfile("__me__")}
-          className="mb-4 flex w-full items-center gap-3 rounded-full px-2 py-2 text-left transition hover:bg-accent tap-highlight-none"
-          aria-label="Your profile"
-        >
+        <button onClick={() => goProfile("__me__")} className="mb-4 flex w-full items-center gap-3 rounded-full px-2 py-2 text-left transition hover:bg-accent tap-highlight-none" aria-label="Your profile">
           <UserAvatar name={me.name} username={me.username} avatarUrl={me.avatarUrl} size={36} />
           <div className="hidden min-w-0 flex-1 xl:block">
             <div className="flex items-center gap-1 truncate text-[14px] font-semibold">
@@ -162,46 +111,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       ) : (
         <div className="mb-4 flex flex-col gap-2 px-1">
-          <Button variant="default" className="rounded-full" onClick={() => openAuth("login")}>
-            Sign in
-          </Button>
-          <Button variant="secondary" className="rounded-full" onClick={() => openAuth("signup")}>
-            Create account
-          </Button>
+          <Button variant="default" className="rounded-full" onClick={() => openAuth("login")}>Sign in</Button>
+          <Button variant="secondary" className="rounded-full" onClick={() => openAuth("signup")}>Create account</Button>
         </div>
       )}
-
-      {/* Logo centered */}
       <button onClick={() => nav({ name: "home" })} className="mb-6 flex items-center justify-center px-2 transition hover:opacity-80 lg:px-3" aria-label="OpyCampus home">
         <OpyCampusLogo size={28} />
       </button>
-
       <nav className="flex flex-col gap-1">
-        {NAV.map((item) => (
-          <NavButton
-            key={item.key}
-            item={item}
-            active={!!activeItem && item.key === activeItem.key}
-            onClick={() => (item.key === "profile" ? goProfile("__me__") : nav(item.view))}
-            avatar={item.key === "profile" ? me?.avatarUrl : undefined}
-          />
-        ))}
+        {NAV.map((item) => {
+          const active = !!activeItem && item.key === activeItem.key;
+          return (
+            <button key={item.key} onClick={() => (item.key === "profile" ? goProfile("__me__") : nav(item.view))} className={cn("group flex w-full items-center gap-4 rounded-full px-3 py-2.5 text-[15px] font-medium transition-colors tap-highlight-none", active ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
+              <span className="relative">
+                {item.key === "profile" && me ? (
+                  <UserAvatar name="me" avatarUrl={me.avatarUrl} size={26} className={cn("ring-2", active ? "ring-foreground" : "ring-transparent")} />
+                ) : item.customIcon === "community" ? (
+                  <CommunityIcon className="transition-transform group-active:scale-90" />
+                ) : (
+                  <item.icon className={cn("h-[26px] w-[26px] transition-transform group-active:scale-90", active && "fill-foreground/10")} />
+                )}
+              </span>
+              <span className={cn("hidden lg:inline", active && "font-semibold")}>{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
-
       {me ? (
-        <Button
-          onClick={() => openCompose()}
-          className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 xl:px-0"
-        >
+        <Button onClick={() => openCompose()} className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 xl:px-0">
           <Plus className="h-5 w-5 xl:mr-1" />
           <span className="hidden xl:inline">New post</span>
         </Button>
       ) : null}
-
       <div className="mt-auto pt-4">
-        <div className="mb-1 flex justify-end px-1 lg:hidden xl:flex">
-          <ThemeToggle />
-        </div>
+        <div className="mb-1 flex justify-end px-1 lg:hidden xl:flex"><ThemeToggle /></div>
         {isLoading ? (
           <div className="flex items-center gap-3 px-2">
             <Skeleton className="h-9 w-9 rounded-full" />
@@ -220,23 +163,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel className="truncate">Signed in as @{me.username}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => nav({ name: "settings" })}>
-                <SettingsIcon className="mr-2 h-4 w-4" /> Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => nav({ name: "bookmarks" })}>
-                <Bookmark className="mr-2 h-4 w-4" /> Saved posts
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => nav({ name: "communities" })}>
-                <Users className="mr-2 h-4 w-4" /> Groups & communities
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => nav({ name: "settings" })}><SettingsIcon className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => nav({ name: "bookmarks" })}><Bookmark className="mr-2 h-4 w-4" /> Saved posts</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => nav({ name: "communities" })}><Users className="mr-2 h-4 w-4" /> Groups</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => {
-                  logoutMut.mutate();
-                  nav({ name: "home" });
-                }}
-              >
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { logoutMut.mutate(); nav({ name: "home" }); }}>
                 <LogOut className="mr-2 h-4 w-4" /> Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -246,14 +177,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </aside>
   );
 
+  // ─── Mobile top bar — SINGLE header, no duplicate below ───
   const mobileTop = (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background/85 px-4 backdrop-blur-md lg:hidden safe-top">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-md lg:hidden" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
       {canBack() && view.name !== "home" ? (
-        <button
-          onClick={back}
-          className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-accent tap-highlight-none"
-          aria-label="Back"
-        >
+        <button onClick={back} className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-accent tap-highlight-none" aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
         </button>
       ) : (
@@ -262,11 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       )}
       <div className="flex items-center gap-1">
-        <button
-          onClick={() => nav({ name: "search", query: "" })}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"
-          aria-label="Search"
-        >
+        <button onClick={() => nav({ name: "search", query: "" })} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Search">
           <Search className="h-[19px] w-[19px]" />
         </button>
         <NotificationBell onClick={() => nav({ name: "activity" })} />
@@ -275,32 +199,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </header>
   );
 
+  // ─── Mobile bottom nav ───
   const mobileBottom = (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-around border-t border-border bg-background/90 backdrop-blur-md lg:hidden safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-around border-t border-border bg-background/95 backdrop-blur-md lg:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       {NAV.map((item) => {
         const active = !!activeItem && item.key === activeItem.key;
         return (
-          <button
-            key={item.key}
-            onClick={() => (item.key === "profile" ? goProfile("__me__") : nav(item.view))}
-            className={cn(
-              "relative inline-flex h-11 w-11 items-center justify-center rounded-full transition tap-highlight-none",
-              active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-            aria-label={item.label}
-          >
+          <button key={item.key} onClick={() => (item.key === "profile" ? goProfile("__me__") : nav(item.view))} className={cn("relative inline-flex h-11 w-11 items-center justify-center rounded-full transition tap-highlight-none", active ? "text-foreground" : "text-muted-foreground hover:text-foreground")} aria-label={item.label}>
             {item.customIcon === "community" ? (
               <CommunityIcon className="h-[24px] w-[24px]" />
             ) : (
               <item.icon className={cn("h-[24px] w-[24px]", active && "fill-foreground/10")} />
             )}
             {item.key === "profile" && me && (
-              <UserAvatar
-                name="me"
-                avatarUrl={me.avatarUrl}
-                size={24}
-                className={cn("absolute", active && "ring-2 ring-foreground")}
-              />
+              <UserAvatar name="me" avatarUrl={me.avatarUrl} size={24} className={cn("absolute", active && "ring-2 ring-foreground")} />
             )}
           </button>
         );
@@ -308,25 +220,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </nav>
   );
 
-  // FAB — only shows on home and groups views, with scroll-based show/hide
   const showFab = me && ["home", "communities", "community"].includes(view.name) && fabVisible;
-
   const mobileFab = showFab ? (
-    <button
-      onClick={() => openCompose()}
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}
-      className="fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.18)] transition-all duration-300 active:scale-95 tap-highlight-none lg:hidden"
-      aria-label="New post"
-    >
+    <button onClick={() => openCompose()} style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }} className="fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.18)] transition-all duration-300 active:scale-95 tap-highlight-none lg:hidden" aria-label="New post">
       <Plus className="h-6 w-6" />
     </button>
   ) : null;
 
+  // ─── ROOT LAYOUT — key fix: content fills full width, no max-w centering on mobile ───
   return (
     <div className="flex min-h-[100dvh] w-full bg-background overflow-x-hidden">
       {desktopNav}
+      {/* Mobile/tablet content column — full width, no max-w centering */}
       <div className="flex min-h-[100dvh] w-full min-w-0 flex-1 flex-col overflow-x-hidden">
         {mobileTop}
+        {/* Main content — full width, no horizontal padding here (views handle their own) */}
         <main className="w-full min-w-0 flex-1 overflow-x-hidden pb-16 lg:pb-0">{children}</main>
         {mobileBottom}
         {mobileFab}

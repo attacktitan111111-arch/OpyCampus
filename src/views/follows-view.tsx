@@ -24,9 +24,9 @@ export function FollowsView({
   const followingIds = new Set(q.data?.following ?? []);
 
   return (
-    <div className="mx-auto w-full max-w-[640px]">
+    <div className="w-full">
       {/* Header */}
-      <div className="sticky top-14 z-20 border-b border-border bg-background/85 backdrop-blur-md lg:top-0">
+      <div className="lg:sticky lg:top-0 lg:z-10 border-b border-border bg-background/85 backdrop-blur-md lg:top-0">
         <div className="flex items-center gap-3 px-4 py-2.5 lg:px-5">
           <button
             onClick={back}

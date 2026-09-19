@@ -27,9 +27,9 @@ export function HomeFeed() {
   const hasInstitution = !!session?.user?.institution;
 
   return (
-    <div className="mx-auto w-full max-w-[640px] overflow-x-hidden">
+    <div className="w-full overflow-x-hidden">
       {/* Tabs */}
-      <div className="sticky top-14 z-20 border-b border-border bg-background/80 backdrop-blur-md lg:top-0">
+      <div className="lg:sticky lg:top-0 lg:z-10 border-b border-border bg-background/80 backdrop-blur-md lg:top-0">
         <div className="relative flex overflow-x-hidden">
           {TABS.map((t) => {
             const active = tab === t.key;

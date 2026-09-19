@@ -166,7 +166,7 @@ export function ProfileView({ username }: { username: string }) {
   const missingCover = !user.coverUrl;
 
   return (
-    <div className="mx-auto w-full max-w-[640px] pb-4 overflow-x-hidden">
+    <div className="w-full pb-4 overflow-x-hidden">
       {/* Cover photo — full width, no sticky header (mobile top bar has back button already) */}
       <div className="relative overflow-hidden">
         {user.coverUrl && user.coverUrl.startsWith("grad://") ? (

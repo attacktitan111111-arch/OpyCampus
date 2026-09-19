@@ -66,7 +66,7 @@ export function OnboardingView() {
   if (isLoading) return <LoadingState className="py-24" />;
   if (!me) {
     return (
-      <div className="mx-auto w-full max-w-[640px] px-4 py-16">
+      <div className="w-full px-4 py-16">
         <EmptyState
           icon={Sparkles}
           title="Sign in to continue"
@@ -150,7 +150,7 @@ function OnboardingFlow({ me, navHome }: { me: User; navHome: () => void }) {
   };
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-[640px] flex-col lg:min-h-[100dvh]">
+    <div className="flex min-h-[calc(100dvh-3.5rem)] w-full flex-col lg:min-h-[100dvh]">
       {/* Progress bar at top */}
       <div className="border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md lg:px-5">
         <div className="mb-2 flex items-center justify-between">

@@ -51,7 +51,7 @@ export function ConversationView({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div className="mx-auto flex h-[calc(100dvh-3.5rem)] w-full max-w-[640px] flex-col lg:h-[100dvh]">
+      <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col lg:h-[100dvh]">
         <HeaderSkeleton back={back} />
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           <SkeletonConversation />
@@ -62,7 +62,7 @@ export function ConversationView({ id }: { id: string }) {
 
   if (isError) {
     return (
-      <div className="mx-auto w-full max-w-[640px]">
+      <div className="w-full">
         <HeaderSkeleton back={back} />
         <EmptyState
           icon={MessageCircle}
@@ -80,9 +80,9 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-3.5rem)] w-full max-w-[640px] flex-col lg:h-[100dvh]">
+    <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col lg:h-[100dvh]">
       {/* Header */}
-      <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+      <div className="lg:sticky lg:top-0 lg:z-10 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
         <button
           onClick={back}
           className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"
@@ -198,7 +198,7 @@ function MessageBubble({
 
 function HeaderSkeleton({ back }: { back: () => void }) {
   return (
-    <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+    <div className="lg:sticky lg:top-0 lg:z-10 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
       <button
         onClick={back}
         className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"

@@ -33,7 +33,7 @@ export function EditProfileView() {
 
   if (!me) {
     return (
-      <div className="mx-auto w-full max-w-[640px]">
+      <div className="w-full">
         <HeaderBar back={back} title="Edit profile" />
         <EmptyState
           title="You're signed out"
@@ -158,7 +158,7 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
   const gradientClass = isGradientCover ? coverUrl!.slice("grad://".length) : null;
 
   return (
-    <div className="mx-auto w-full max-w-[640px] pb-24 ">
+    <div className="w-full pb-24 ">
       <HeaderBar
         back={back}
         title="Edit profile"
@@ -367,7 +367,7 @@ function EditProfileForm({ me, back }: { me: User; back: () => void }) {
 
 function HeaderBar({ back, title, right }: { back: () => void; title: string; right?: React.ReactNode }) {
   return (
-    <div className="sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+    <div className="lg:sticky lg:top-0 lg:z-10 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
       <button
         onClick={back}
         className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none press-down"
