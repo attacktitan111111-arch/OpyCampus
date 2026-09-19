@@ -27,7 +27,7 @@ export function HomeFeed() {
   const hasInstitution = !!session?.user?.institution;
 
   return (
-    <div className="w-full overflow-x-hidden">
+    <div className="w-full">
       {/* Tabs — sticky so they stay visible when scrolling (like X.com) */}
       <div className="sticky top-14 z-20 border-b border-border bg-background/90 backdrop-blur-md lg:top-0">
         <div className="relative flex overflow-x-hidden">

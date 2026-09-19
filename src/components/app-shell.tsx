@@ -234,13 +234,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // ─── ROOT LAYOUT — key fix: content fills full width, no max-w centering on mobile ───
   return (
-    <div className="flex min-h-[100dvh] w-full bg-background overflow-x-hidden">
+    <div className="flex min-h-[100dvh] w-full bg-background">
       {desktopNav}
-      {/* Mobile/tablet content column — full width, no max-w centering */}
-      <div className="flex min-h-[100dvh] w-full min-w-0 flex-1 flex-col overflow-x-hidden">
+      {/* Mobile/tablet content column — full width, no overflow-x-hidden (breaks sticky) */}
+      <div className="flex min-h-[100dvh] w-full min-w-0 flex-1 flex-col">
         {mobileTop}
-        {/* Main content — full width, no horizontal padding here (views handle their own) */}
-        <main className="w-full min-w-0 flex-1 overflow-x-hidden pb-16 lg:pb-0">{children}</main>
+        {/* Main content — full width */}
+        <main className="w-full min-w-0 flex-1 pb-16 lg:pb-0">{children}</main>
         {mobileBottom}
         {mobileFab}
       </div>
