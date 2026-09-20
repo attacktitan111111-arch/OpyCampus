@@ -92,9 +92,9 @@ export function ConversationView({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col lg:h-[100dvh]">
+      <div className="flex h-[100dvh] w-full flex-col overflow-hidden">
         <ConversationHeader other={null} back={back} nav={nav} loading />
-        <div className="flex-1 overflow-y-auto scrollbar-thin">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
           <SkeletonConversation />
         </div>
       </div>
@@ -117,12 +117,12 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col lg:h-[100dvh]">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden">
       {/* Header with call buttons */}
       <ConversationHeader other={other} back={back} nav={nav} />
 
-      {/* Messages area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin px-3 py-4 sm:px-5">
+      {/* Messages area — scrolls vertically only, no horizontal scroll */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-4 sm:px-5">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 py-16 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-muted-foreground">
@@ -136,7 +136,7 @@ export function ConversationView({ id }: { id: string }) {
             </div>
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1 overflow-x-hidden">
             {messages.map((m, i) => {
               const prev = messages[i - 1];
               const grouped = prev && prev.senderId === m.senderId && (new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60 * 1000);
@@ -187,7 +187,7 @@ export function ConversationView({ id }: { id: string }) {
       <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "image"); e.target.value = ""; }} />
       <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "file"); e.target.value = ""; }} />
 
-      {/* Composer — Messenger-style with attach, emoji, and send */}
+      {/* Composer — FIXED at bottom, always visible, never scrolls away (like WhatsApp) */}
       <div className="shrink-0 border-t border-border bg-background px-2 py-2 sm:px-3" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
         <div className="flex items-end gap-1.5">
           {/* Attach button */}
@@ -302,12 +302,12 @@ function MessageBubble({ message, grouped, otherAvatar, otherName, otherUsername
       )}
       {!isMe && grouped && <div className="w-7 shrink-0" />}
 
-      <div className={cn("max-w-[75%", isMe ? "items-end" : "items-start", "flex flex-col gap-1")}>
+      <div className={cn("max-w-[78%] min-w-0 overflow-hidden", isMe ? "items-end" : "items-start", "flex flex-col gap-1")}>
         {/* Media */}
         {hasMedia && (
           <div className={cn("grid gap-1 overflow-hidden rounded-2xl", media.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
             {media.map((m, i) => (
-              <div key={i} className={cn("overflow-hidden rounded-xl", media.length === 1 ? "max-w-[280px]" : "")}>
+              <div key={i} className={cn("overflow-hidden rounded-xl", media.length === 1 ? "max-w-[260px]" : "")}>
                 {m.type === "image" ? (
                   <img src={m.url} alt="" className="max-h-[240px] w-full object-cover" loading="lazy" />
                 ) : m.type === "video" ? (

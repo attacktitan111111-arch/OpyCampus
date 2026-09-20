@@ -42,17 +42,9 @@ function NotificationBell({ onClick }: { onClick: () => void }) {
   const { data } = useNotifications();
   const count = data?.unreadCount ?? 0;
   return (
-    <button
-      onClick={onClick}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"
-      aria-label="Notifications"
-    >
+    <button onClick={onClick} className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Notifications">
       <Bell className="h-[19px] w-[19px]" />
-      {count > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-          {count > 9 ? "9+" : count}
-        </span>
-      )}
+      {count > 0 && <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{count > 9 ? "9+" : count}</span>}
     </button>
   );
 }
@@ -63,37 +55,61 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const logoutMut = useLogout();
   const me = session?.user;
   const [fabVisible, setFabVisible] = useState(true);
+  const [topBarVisible, setTopBarVisible] = useState(true);
+  const [bottomNavVisible, setBottomNavVisible] = useState(true);
 
   const activeItem = NAV.find((n) => n.match(view));
+
+  // Views where the bottom nav should be HIDDEN entirely (like Twitter DMs)
+  const hideBottomNavViews = ["conversation"];
+  const hideBottomNav = hideBottomNavViews.includes(view.name);
 
   const goProfile = (username: string) => {
     if (username === "__me__" && me) nav({ name: "profile", username: me.username });
     else if (username !== "__me__") nav({ name: "profile", username });
   };
 
-  // Scroll-based FAB show/hide
+  // Scroll-based shell show/hide (like Twitter/X)
+  // - Scroll down → hide top bar + bottom nav + FAB
+  // - Scroll up → show them again
   useEffect(() => {
-    const showFabViews = ["home", "communities", "community"];
-    if (!showFabViews.includes(view.name)) return;
+    // In conversation view, always hide bottom nav — no scroll behavior
+    if (hideBottomNav) {
+      const t = setTimeout(() => { setBottomNavVisible(false); setFabVisible(false); }, 0);
+      return () => clearTimeout(t);
+    }
+
+    // Don't do scroll-hide on these views (they need the nav always visible)
+    const noHideViews = ["settings", "edit-profile", "legal", "onboarding", "messages", "conversation", "search", "follows"];
+    if (noHideViews.includes(view.name)) {
+      const t = setTimeout(() => { setBottomNavVisible(true); setTopBarVisible(true); setFabVisible(true); }, 0);
+      return () => clearTimeout(t);
+    }
+
     let lastScrollY = window.scrollY;
     const handleScroll = () => {
       const currentY = window.scrollY;
-      if (currentY < 50) setFabVisible(true);
-      else if (currentY > lastScrollY && currentY > 100) setFabVisible(false);
-      else if (currentY < lastScrollY) setFabVisible(true);
+      if (currentY < 50) {
+        // Near top — show everything
+        setTopBarVisible(true);
+        setBottomNavVisible(true);
+        setFabVisible(true);
+      } else if (currentY > lastScrollY && currentY > 120) {
+        // Scrolling down — hide shells
+        setTopBarVisible(false);
+        setBottomNavVisible(false);
+        setFabVisible(false);
+      } else if (currentY < lastScrollY) {
+        // Scrolling up — show shells
+        setTopBarVisible(true);
+        setBottomNavVisible(true);
+        setFabVisible(true);
+      }
       lastScrollY = currentY;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [view.name]);
-
-  useEffect(() => {
-    const showFabViews = ["home", "communities", "community"];
-    if (!showFabViews.includes(view.name)) {
-      const t = setTimeout(() => setFabVisible(false), 0);
-      return () => clearTimeout(t);
-    }
-  }, [view.name]);
+  }, [view.name, hideBottomNav]);
 
   // ─── Desktop sidebar ───
   const desktopNav = (
@@ -139,26 +155,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </nav>
       {me ? (
         <Button onClick={() => openCompose()} className="mt-5 h-12 rounded-full bg-primary text-[15px] font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 xl:px-0">
-          <Plus className="h-5 w-5 xl:mr-1" />
-          <span className="hidden xl:inline">New post</span>
+          <Plus className="h-5 w-5 xl:mr-1" /><span className="hidden xl:inline">New post</span>
         </Button>
       ) : null}
       <div className="mt-auto pt-4">
         <div className="mb-1 flex justify-end px-1 lg:hidden xl:flex"><ThemeToggle /></div>
         {isLoading ? (
-          <div className="flex items-center gap-3 px-2">
-            <Skeleton className="h-9 w-9 rounded-full" />
-            <div className="hidden xl:block flex-1 space-y-1.5">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          </div>
+          <div className="flex items-center gap-3 px-2"><Skeleton className="h-9 w-9 rounded-full" /><div className="hidden xl:block flex-1 space-y-1.5"><Skeleton className="h-3 w-20" /><Skeleton className="h-3 w-16" /></div></div>
         ) : me ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center justify-center rounded-full p-2 transition hover:bg-accent tap-highlight-none" aria-label="Settings menu">
-                <SettingsIcon className="h-5 w-5 text-muted-foreground" />
-              </button>
+              <button className="flex w-full items-center justify-center rounded-full p-2 transition hover:bg-accent tap-highlight-none" aria-label="Settings menu"><SettingsIcon className="h-5 w-5 text-muted-foreground" /></button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
               <DropdownMenuLabel className="truncate">Signed in as @{me.username}</DropdownMenuLabel>
@@ -167,9 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuItem onClick={() => nav({ name: "bookmarks" })}><Bookmark className="mr-2 h-4 w-4" /> Saved posts</DropdownMenuItem>
               <DropdownMenuItem onClick={() => nav({ name: "communities" })}><Users className="mr-2 h-4 w-4" /> Groups</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { logoutMut.mutate(); nav({ name: "home" }); }}>
-                <LogOut className="mr-2 h-4 w-4" /> Sign out
-              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { logoutMut.mutate(); nav({ name: "home" }); }}><LogOut className="mr-2 h-4 w-4" /> Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
@@ -177,9 +182,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </aside>
   );
 
-  // ─── Mobile top bar — SINGLE header, no duplicate below ───
+  // ─── Mobile top bar — slides up/down on scroll (like Twitter) ───
   const mobileTop = (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-md lg:hidden" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+    <header
+      className={cn(
+        "sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-md lg:hidden transition-transform duration-300",
+        topBarVisible ? "translate-y-0" : "-translate-y-full"
+      )}
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
       {canBack() && view.name !== "home" ? (
         <button onClick={back} className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-accent tap-highlight-none" aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
@@ -190,57 +201,48 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       )}
       <div className="flex items-center gap-1">
-        <button onClick={() => nav({ name: "search", query: "" })} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Search">
-          <Search className="h-[19px] w-[19px]" />
-        </button>
+        <button onClick={() => nav({ name: "search", query: "" })} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Search"><Search className="h-[19px] w-[19px]" /></button>
         <NotificationBell onClick={() => nav({ name: "activity" })} />
-        {me ? (
-          <button onClick={() => nav({ name: "settings" })} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Settings">
-            <SettingsIcon className="h-[19px] w-[19px]" />
-          </button>
-        ) : null}
+        {me ? <button onClick={() => nav({ name: "settings" })} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Settings"><SettingsIcon className="h-[19px] w-[19px]" /></button> : null}
         <ThemeToggle />
       </div>
     </header>
   );
 
-  // ─── Mobile bottom nav ───
-  const mobileBottom = (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-around border-t border-border bg-background/95 backdrop-blur-md lg:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+  // ─── Mobile bottom nav — slides down/up on scroll, hidden in conversation ───
+  const mobileBottom = !hideBottomNav ? (
+    <nav
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-around border-t border-border bg-background/95 backdrop-blur-md lg:hidden transition-transform duration-300",
+        bottomNavVisible ? "translate-y-0" : "translate-y-full"
+      )}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
       {NAV.map((item) => {
         const active = !!activeItem && item.key === activeItem.key;
         return (
           <button key={item.key} onClick={() => (item.key === "profile" ? goProfile("__me__") : nav(item.view))} className={cn("relative inline-flex h-11 w-11 items-center justify-center rounded-full transition tap-highlight-none", active ? "text-foreground" : "text-muted-foreground hover:text-foreground")} aria-label={item.label}>
-            {item.customIcon === "community" ? (
-              <CommunityIcon className="h-[24px] w-[24px]" />
-            ) : (
-              <item.icon className={cn("h-[24px] w-[24px]", active && "fill-foreground/10")} />
-            )}
-            {item.key === "profile" && me && (
-              <UserAvatar name="me" avatarUrl={me.avatarUrl} size={24} className={cn("absolute", active && "ring-2 ring-foreground")} />
-            )}
+            {item.customIcon === "community" ? <CommunityIcon className="h-[24px] w-[24px]" /> : <item.icon className={cn("h-[24px] w-[24px]", active && "fill-foreground/10")} />}
+            {item.key === "profile" && me && <UserAvatar name="me" avatarUrl={me.avatarUrl} size={24} className={cn("absolute", active && "ring-2 ring-foreground")} />}
           </button>
         );
       })}
     </nav>
-  );
+  ) : null;
 
   const showFab = me && ["home", "communities", "community"].includes(view.name) && fabVisible;
   const mobileFab = showFab ? (
-    <button onClick={() => openCompose()} style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }} className="fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.18)] transition-all duration-300 active:scale-95 tap-highlight-none lg:hidden" aria-label="New post">
-      <Plus className="h-6 w-6" />
-    </button>
+    <button onClick={() => openCompose()} style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }} className={cn("fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.18)] transition-all duration-300 active:scale-95 tap-highlight-none lg:hidden", fabVisible ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0")} aria-label="New post"><Plus className="h-6 w-6" /></button>
   ) : null;
 
-  // ─── ROOT LAYOUT — key fix: content fills full width, no max-w centering on mobile ───
+  // ─── ROOT LAYOUT ───
   return (
     <div className="flex min-h-[100dvh] w-full bg-background">
       {desktopNav}
-      {/* Mobile/tablet content column — full width, no overflow-x-hidden (breaks sticky) */}
       <div className="flex min-h-[100dvh] w-full min-w-0 flex-1 flex-col">
         {mobileTop}
-        {/* Main content — full width */}
-        <main className="w-full min-w-0 flex-1 pb-16 lg:pb-0">{children}</main>
+        {/* In conversation view, no bottom padding (bottom nav is hidden) */}
+        <main className={cn("w-full min-w-0 flex-1", hideBottomNav ? "pb-0" : "pb-16 lg:pb-0")}>{children}</main>
         {mobileBottom}
         {mobileFab}
       </div>
