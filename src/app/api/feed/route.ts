@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!me) return NextResponse.json({ posts: [] });
   const { searchParams } = new URL(req.url);
   const tab = searchParams.get("tab") ?? "foryou"; // foryou | following | institution
-  const limit = Number(searchParams.get("limit") ?? 25);
+  const limit = Number(searchParams.get("limit") ?? 15); // fewer posts = faster load
   const cursor = searchParams.get("cursor") ?? undefined;
 
   const followingIds = me.followsGiven.map((f) => f.followingId);

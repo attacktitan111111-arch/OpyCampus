@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowLeft, Lock, Globe, Users, PenSquare, ShieldCheck, Plus, X } from "lucide-react";
 import { useApp, useCommunity, useCommunityFeed, useJoinCommunity, useSession } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
@@ -24,6 +25,20 @@ export function CommunityView({ handle }: { handle: string }) {
   const joinMut = useJoinCommunity();
   const { data: session } = useSession();
 
+  const [headerVisible, setHeaderVisible] = useState(true);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 50) setHeaderVisible(true);
+      else if (currentY > lastY && currentY > 120) setHeaderVisible(false);
+      else if (currentY < lastY) setHeaderVisible(true);
+      lastY = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const community = data?.community;
 
   if (isLoading) return <LoadingState className="py-24" />;
@@ -47,8 +62,8 @@ export function CommunityView({ handle }: { handle: string }) {
 
   return (
     <div className="w-full">
-      {/* Header — minimal context bar (no duplicate of name). Body shows full name + verified badge. */}
-      <div className="sticky top-14 z-20 lg:top-0 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+      {/* Header — slides up/down on scroll */}
+      <div className={cn("sticky top-14 z-20 lg:top-0 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md transition-transform duration-300 lg:px-5", headerVisible ? "translate-y-0" : "-translate-y-full")}>
         <button onClick={back} className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
         </button>

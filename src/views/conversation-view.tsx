@@ -93,7 +93,7 @@ export function ConversationView({ id }: { id: string }) {
   // Loading state — show immediately, no slow skeleton
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100dvh]">
+      <div className="flex h-[calc(100vh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100vh]">
         <ConvHeader other={null} back={back} nav={nav} loading />
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="flex h-full items-center justify-center">
@@ -106,7 +106,7 @@ export function ConversationView({ id }: { id: string }) {
 
   if (isError) {
     return (
-      <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100dvh]">
+      <div className="flex h-[calc(100vh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100vh]">
         <ConvHeader other={null} back={back} nav={nav} />
         <EmptyState icon={MessageCircle} title="Conversation not found" description="This conversation may have been removed." className="py-20" action={<Button variant="secondary" className="rounded-full" onClick={() => nav({ name: "messages" })}>Back to messages</Button>} />
       </div>
@@ -114,8 +114,8 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    // ─── ROOT: fixed height = viewport - mobile top bar height. No scroll on this container. ───
-    <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100dvh]">
+    // ─── ROOT: fixed height = full viewport. Uses vh (not dvh) so keyboard doesn't resize. ───
+    <div className="flex h-[calc(100vh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100vh]">
       {/* ─── HEADER: shrink-0, not sticky, fixed at top of the flex column ─── */}
       <ConvHeader other={other} back={back} nav={nav} />
 
