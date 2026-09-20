@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays, ArrowLeft, MapPin, Heart, Grid3x3, Building2, Globe, Repeat2, Mail, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, ArrowLeft, MapPin, Heart, Grid3x3, Building2, Globe, Repeat2, Mail, Sparkles, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -112,7 +112,7 @@ function completionPct(user: {
 }
 
 export function ProfileView({ username }: { username: string }) {
-  const { nav, back, canBack } = useApp();
+  const { nav, back, canBack, openCompose } = useApp();
   const { data, isLoading, isError } = useProfile(username);
   const [tab, setTab] = useState<TabKey>("posts");
   const posts = useUserPosts(username, tab === "likes" ? "likes" : "posts");
@@ -120,6 +120,22 @@ export function ProfileView({ username }: { username: string }) {
   const followMut = useToggleFollow();
   const startConvMut = useStartConversation();
   const { data: session } = useSession();
+
+  // Scroll-based show/hide for the mobile compose FAB — same pattern as the home
+  // feed timeline tabs: scroll down → hide, scroll up → show, near top → always.
+  const [fabVisible, setFabVisible] = useState(true);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 50) setFabVisible(true);
+      else if (currentY > lastY && currentY > 120) setFabVisible(false);
+      else if (currentY < lastY) setFabVisible(true);
+      lastY = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const user = data?.user;
   const isMe = data?.isMe;
@@ -374,6 +390,22 @@ export function ProfileView({ username }: { username: string }) {
       )}
 
       <div className="h-20" />
+
+      {/* Mobile compose FAB — only on the signed-in user's own profile */}
+      {isMe && (
+        <button
+          type="button"
+          onClick={() => openCompose()}
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5rem)" }}
+          className={cn(
+            "fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_24px_rgba(0,0,0,0.28),0_2px_8px_rgba(0,0,0,0.18)] transition-all duration-300 active:scale-95 tap-highlight-none lg:hidden press-down",
+            fabVisible ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"
+          )}
+          aria-label="New post"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
     </div>
   );
 }

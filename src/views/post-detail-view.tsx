@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useApp, usePost, useReplies, useSession } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
@@ -11,6 +12,7 @@ import { QuotedPostBlock } from "@/components/quoted-post-block";
 import { LoadingState, EmptyState } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function renderContent(content: string) {
   const parts = content.split(/(\s+)/);
@@ -41,6 +43,23 @@ export function PostDetailView({ postId }: { postId: string }) {
 
   const post = postData?.post;
 
+  // Scroll-based show/hide for the sticky "Post" header — same pattern as the
+  // home feed timeline tabs: scroll down → header slides up, scroll up → header
+  // slides back. Near the top, the header is always visible.
+  const [headerVisible, setHeaderVisible] = useState(true);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 50) setHeaderVisible(true);
+      else if (currentY > lastY && currentY > 120) setHeaderVisible(false);
+      else if (currentY < lastY) setHeaderVisible(true);
+      lastY = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   if (isLoading) return <LoadingState className="py-24" />;
   if (isError || !post)
     return (
@@ -60,8 +79,13 @@ export function PostDetailView({ postId }: { postId: string }) {
 
   return (
     <div className="w-full">
-      {/* Header */}
-      <div className="sticky top-14 z-20 lg:top-0 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md lg:top-0 lg:px-5">
+      {/* Header — slides up on scroll-down, slides back on scroll-up */}
+      <div
+        className={cn(
+          "sticky top-14 z-20 flex items-center gap-3 border-b border-border bg-background/85 px-4 py-2.5 backdrop-blur-md transition-transform duration-300 lg:top-0 lg:px-5",
+          headerVisible ? "translate-y-0" : "-translate-y-full"
+        )}
+      >
         <button onClick={back} className="hidden lg:inline-flex lg:h-9 lg:w-9 lg:items-center lg:justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none" aria-label="Back">
           <ArrowLeft className="h-5 w-5" />
         </button>
@@ -243,9 +267,10 @@ export function PostDetailView({ postId }: { postId: string }) {
                               replyTo: { id: r.id, authorName: r.author.name, authorUsername: r.author.username },
                             })
                           }
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none press-down"
+                          aria-label={`Reply to ${r.author.name}`}
                         >
-                          <MessageCircle className="h-3.5 w-3.5" />
+                          <MessageCircle className="h-4 w-4" />
                           Reply
                         </button>
                         <span className="text-[12px] text-muted-foreground/70">

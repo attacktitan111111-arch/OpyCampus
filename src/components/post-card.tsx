@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useApp, useSession } from "@/lib/hooks";
 import type { Post } from "@/lib/hooks";
@@ -9,6 +10,7 @@ import { EngagementBar } from "./engagement-bar";
 import { InstitutionPill } from "./institution-pill";
 import { CommunityIcon } from "./custom-icons";
 import { QuotedPostBlock } from "./quoted-post-block";
+import { MediaLightbox } from "./media-lightbox";
 
 function renderContent(content: string) {
   const parts = content.split(/(\s+)/);
@@ -33,6 +35,7 @@ function renderContent(content: string) {
 
 export function PostCard({ post }: { post: Post }) {
   const { nav } = useApp();
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const onAuthorClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,6 +52,13 @@ export function PostCard({ post }: { post: Post }) {
   const onQuotedPostClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (post.quoteOf) nav({ name: "post", postId: post.quoteOf.id });
+  };
+
+  // Open the fullscreen media lightbox at the clicked index.
+  // stopPropagation so the article's onClick (navigate to post detail) doesn't fire.
+  const openLightbox = (e: React.MouseEvent, i: number) => {
+    e.stopPropagation();
+    setLightboxIndex(i);
   };
 
   // Comment button navigates to the post detail (thread) page — like Threads app
@@ -155,13 +165,15 @@ export function PostCard({ post }: { post: Post }) {
                       playsInline
                       preload="metadata"
                       className="h-full w-full object-cover"
+                      onClick={(e) => openLightbox(e, i)}
                     />
                   ) : (
                     <img
                       src={m.url}
                       alt=""
                       loading="lazy"
-                      className="h-full w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                      onClick={(e) => openLightbox(e, i)}
+                      className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-95"
                     />
                   )}
                 </div>
@@ -193,6 +205,14 @@ export function PostCard({ post }: { post: Post }) {
           </div>
         </div>
       </div>
+
+      {/* Fullscreen media lightbox — opens when any image/video in the grid is clicked */}
+      <MediaLightbox
+        media={post.media}
+        initialIndex={lightboxIndex ?? 0}
+        open={lightboxIndex !== null}
+        onClose={() => setLightboxIndex(null)}
+      />
     </article>
   );
 }

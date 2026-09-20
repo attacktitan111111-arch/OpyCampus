@@ -90,19 +90,23 @@ export function ConversationView({ id }: { id: string }) {
     textareaRef.current?.focus();
   };
 
-  // Loading state
+  // Loading state — show immediately, no slow skeleton
   if (isLoading) {
     return (
-      <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-background">
+      <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100dvh]">
         <ConvHeader other={null} back={back} nav={nav} loading />
-        <div className="flex-1 overflow-y-auto overflow-x-hidden"><SkeletonConversation /></div>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="flex h-full items-center justify-center">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-background">
+      <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100dvh]">
         <ConvHeader other={null} back={back} nav={nav} />
         <EmptyState icon={MessageCircle} title="Conversation not found" description="This conversation may have been removed." className="py-20" action={<Button variant="secondary" className="rounded-full" onClick={() => nav({ name: "messages" })}>Back to messages</Button>} />
       </div>
@@ -110,8 +114,8 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    // ─── ROOT: fixed full-height flex column. No scroll on this container. ───
-    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-background">
+    // ─── ROOT: fixed height = viewport - mobile top bar height. No scroll on this container. ───
+    <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100dvh]">
       {/* ─── HEADER: shrink-0, not sticky, fixed at top of the flex column ─── */}
       <ConvHeader other={other} back={back} nav={nav} />
 

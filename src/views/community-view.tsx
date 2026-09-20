@@ -68,10 +68,10 @@ export function CommunityView({ handle }: { handle: string }) {
         )}
       </div>
 
-      {/* Icon + actions */}
-      <div className="px-4 sm:px-5">
+      {/* Icon + actions — icon overlaps banner bottom by half */}
+      <div className="relative px-4 sm:px-5">
         <div className="-mt-9 flex items-end justify-between">
-          <div className="flex items-center justify-center overflow-hidden rounded-2xl border-4 border-background bg-background" style={{ width: 72, height: 72 }}>
+          <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-background bg-background shadow-sm" style={{ width: 72, height: 72 }}>
             {community.iconUrl ? (
               <img src={community.iconUrl} alt="" className="h-full w-full object-cover" />
             ) : (

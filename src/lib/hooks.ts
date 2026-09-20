@@ -618,6 +618,8 @@ export function useConversationMessages(id: string | null) {
     queryKey: id ? keys.conversationMessages(id) : ["conv-messages", "none"],
     queryFn: () => api<{ conversation: { id: string; other: User | null }; messages: MessageItem[] }>(`/api/conversations/${id}/messages`),
     enabled: !!id,
+    staleTime: 30_000, // cache for 30s — don't refetch on every mount
+    refetchOnMount: false, // don't refetch when navigating back
   });
 }
 

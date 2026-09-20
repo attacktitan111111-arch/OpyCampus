@@ -61,16 +61,16 @@ export function InstitutionView({ handle }: { handle: string }) {
       </div>
 
       {/* Banner */}
-      <div className="relative h-32 w-full bg-gradient-to-br from-primary/15 to-primary/5 sm:h-40">
+      <div className="relative h-28 w-full bg-gradient-to-br from-primary/15 to-primary/5 sm:h-36">
         {inst.coverUrl && (
           <img src={inst.coverUrl} alt="" className="h-full w-full object-cover" />
         )}
       </div>
 
-      {/* Logo + actions */}
-      <div className="px-4 sm:px-5">
+      {/* Logo + actions — logo overlaps banner bottom by half */}
+      <div className="relative px-4 sm:px-5">
         <div className="-mt-10 flex items-end justify-between">
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border-4 border-background bg-background">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-background bg-background shadow-sm">
             {inst.logoUrl ? (
               <img src={inst.logoUrl} alt="" className="h-full w-full object-cover" />
             ) : (
