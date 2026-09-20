@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search, Users, Lock, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useCommunitiesSearch, useCreateCommunity, useUploadFile, useSession } from "@/lib/hooks";
@@ -36,9 +36,23 @@ export function CommunitiesView() {
 
   const communities = data.data?.communities ?? [];
 
+  const [headerVisible, setHeaderVisible] = useState(true);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 50) setHeaderVisible(true);
+      else if (currentY > lastY && currentY > 120) setHeaderVisible(false);
+      else if (currentY < lastY) setHeaderVisible(true);
+      lastY = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <div className="w-full">
-      <div className="sticky top-14 z-20 border-b border-border bg-background/90 backdrop-blur-md lg:top-0">
+      <div className={cn("sticky top-14 z-20 border-b border-border bg-background/90 backdrop-blur-md transition-transform duration-300 lg:top-0", headerVisible ? "translate-y-0" : "-translate-y-full")}>
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-[18px] font-bold">Groups</h1>
           <Button size="sm" className="rounded-full" onClick={() => setCreateOpen(true)}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Users, School, PenSquare, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -22,14 +22,29 @@ export function HomeFeed() {
   const { openCompose } = useApp();
   const { data: session } = useSession();
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [tabsVisible, setTabsVisible] = useState(true);
+
+  // Scroll-based tabs show/hide — slides up with the top bar
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 50) setTabsVisible(true);
+      else if (currentY > lastY && currentY > 120) setTabsVisible(false);
+      else if (currentY < lastY) setTabsVisible(true);
+      lastY = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const posts = data?.posts ?? [];
   const hasInstitution = !!session?.user?.institution;
 
   return (
     <div className="w-full">
-      {/* Tabs — sticky so they stay visible when scrolling (like X.com) */}
-      <div className="sticky top-14 z-20 border-b border-border bg-background/90 backdrop-blur-md lg:top-0">
+      {/* Tabs — slides up/down with the top bar on scroll */}
+      <div className={cn("sticky top-14 z-20 border-b border-border bg-background/90 backdrop-blur-md transition-transform duration-300 lg:top-0", tabsVisible ? "translate-y-0" : "-translate-y-full")}>
         <div className="relative flex overflow-x-hidden">
           {TABS.map((t) => {
             const active = tab === t.key;

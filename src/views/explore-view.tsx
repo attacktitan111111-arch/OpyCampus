@@ -13,11 +13,26 @@ export function ExploreView({ initialQuery }: { initialQuery?: string }) {
   const { nav } = useApp();
   const [q, setQ] = useState(initialQuery ?? "");
   const [debounced, setDebounced] = useState(initialQuery ?? "");
+  const [searchVisible, setSearchVisible] = useState(true);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q.trim()), 280);
     return () => clearTimeout(t);
   }, [q]);
+
+  // Scroll-based search bar show/hide
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY < 50) setSearchVisible(true);
+      else if (currentY > lastY && currentY > 120) setSearchVisible(false);
+      else if (currentY < lastY) setSearchVisible(true);
+      lastY = currentY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const explore = useExplore(debounced);
   const users = useUsersSearch(debounced);
@@ -26,8 +41,8 @@ export function ExploreView({ initialQuery }: { initialQuery?: string }) {
 
   return (
     <div className="w-full">
-      {/* Search header */}
-      <div className="sticky top-14 z-20 lg:top-0 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md lg:top-0 lg:px-5">
+      {/* Search header — slides up/down with scroll */}
+      <div className={cn("sticky top-14 z-20 lg:top-0 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-md transition-transform duration-300 lg:px-5", searchVisible ? "translate-y-0" : "-translate-y-full")}>
         <div className="flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-4 py-2.5 transition focus-within:border-foreground/30 focus-within:bg-background">
           <Search className="h-[18px] w-[18px] text-muted-foreground" />
           <input
