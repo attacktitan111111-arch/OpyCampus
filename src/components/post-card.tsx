@@ -165,14 +165,13 @@ export function PostCard({ post }: { post: Post }) {
                       playsInline
                       preload="metadata"
                       className="h-full w-full object-cover"
-                      onClick={(e) => openLightbox(e, i)}
                     />
                   ) : (
                     <img
                       src={m.url}
                       alt=""
                       loading="lazy"
-                      onClick={(e) => openLightbox(e, i)}
+                      onClick={(e) => { e.stopPropagation(); openLightbox(e, i); }}
                       className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-95"
                     />
                   )}

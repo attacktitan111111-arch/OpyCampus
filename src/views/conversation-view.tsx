@@ -113,13 +113,25 @@ export function ConversationView({ id }: { id: string }) {
 
   return (
     // ─── WhatsApp-style layout ───
-    // Full-screen fixed overlay — starts from top:0, includes safe area padding in the header
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
-      {/* ─── HEADER: always fixed at top, never moves ─── */}
-      <ConvHeader other={other} back={back} nav={nav} />
+    // Full-screen fixed overlay. Uses dvh so it adapts to keyboard.
+    // Header is fixed position (not flex child) so it NEVER moves.
+    // Composer is fixed position at bottom so it NEVER moves.
+    // Messages area sits between them and scrolls.
+    <>
+      {/* ─── HEADER: position fixed, always at top, never moves ─── */}
+      <div className="fixed top-0 left-0 right-0 z-[60] bg-background">
+        <ConvHeader other={other} back={back} nav={nav} />
+      </div>
 
-      {/* ─── MESSAGES: flex-1, scrolls internally ─── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3">
+      {/* ─── MESSAGES: fixed position below header, above composer ─── */}
+      <div
+        ref={scrollRef}
+        className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3"
+        style={{
+          top: "calc(3.5rem + env(safe-area-inset-top, 0px))",
+          bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))",
+        }}
+      >
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-muted-foreground">
@@ -141,9 +153,9 @@ export function ConversationView({ id }: { id: string }) {
         )}
       </div>
 
-      {/* ─── PENDING MEDIA PREVIEW ─── */}
+      {/* ─── PENDING MEDIA PREVIEW — fixed above composer ─── */}
       {pendingMedia.length > 0 && (
-        <div className="shrink-0 border-t border-border bg-secondary/30 px-3 py-2">
+        <div className="fixed left-0 right-0 z-[55] border-t border-border bg-secondary/30 px-3 py-2" style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}>
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {pendingMedia.map((m, i) => (
               <div key={i} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
@@ -158,9 +170,9 @@ export function ConversationView({ id }: { id: string }) {
         </div>
       )}
 
-      {/* ─── EMOJI PICKER ─── */}
+      {/* ─── EMOJI PICKER — fixed above composer ─── */}
       {showEmoji && (
-        <div className="shrink-0 border-t border-border bg-background p-2">
+        <div className="fixed left-0 right-0 z-[55] border-t border-border bg-background p-2" style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}>
           <div className="grid grid-cols-8 gap-1">
             {EMOJIS.map((e, i) => (
               <button key={i} onClick={() => insertEmoji(e)} className="rounded-lg p-1.5 text-xl transition hover:bg-accent tap-highlight-none">{e}</button>
@@ -173,8 +185,8 @@ export function ConversationView({ id }: { id: string }) {
       <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "image"); e.target.value = ""; }} />
       <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "file"); e.target.value = ""; }} />
 
-      {/* ─── COMPOSER: fixed at the very bottom, always visible ─── */}
-      <div className="shrink-0 border-t border-border bg-background px-2 py-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
+      {/* ─── COMPOSER: position fixed at the very bottom, always visible ─── */}
+      <div className="fixed bottom-0 left-0 right-0 z-[60] border-t border-border bg-background px-2 py-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
         <div className="flex items-end gap-1.5">
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading || pendingMedia.length >= 4} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40 tap-highlight-none" aria-label="Attach file">
             {uploading ? <InlineSpinner className="h-5 w-5" /> : <Paperclip className="h-[19px] w-[19px]" />}
@@ -189,7 +201,7 @@ export function ConversationView({ id }: { id: string }) {
           <button onClick={handleSend} disabled={(!text.trim() && pendingMedia.length === 0) || sendMut.isPending} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed tap-highlight-none" aria-label="Send"><Send className="h-[18px] w-[18px]" /></button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

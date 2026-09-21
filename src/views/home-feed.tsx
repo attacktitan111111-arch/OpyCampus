@@ -23,6 +23,8 @@ export function HomeFeed() {
   const { data: session } = useSession();
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [tabsVisible, setTabsVisible] = useState(true);
+  const swipeStartX = useRef<number | null>(null);
+  const swipeStartY = useRef<number | null>(null);
 
   // Scroll-based tabs show/hide — slides up with the top bar
   useEffect(() => {
@@ -94,6 +96,24 @@ export function HomeFeed() {
         </button>
       </div>
 
+      {/* Feed — swipe left/right to switch tabs */}
+      <div
+        onTouchStart={(e) => { swipeStartX.current = e.touches[0].clientX; swipeStartY.current = e.touches[0].clientY; }}
+        onTouchEnd={(e) => {
+          if (swipeStartX.current === null) return;
+          const dx = e.changedTouches[0].clientX - swipeStartX.current;
+          const dy = e.changedTouches[0].clientY - swipeStartY.current;
+          swipeStartX.current = null;
+          swipeStartY.current = null;
+          // Only horizontal swipes
+          if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            const tabs = TABS.filter(t => !(t.key === "institution" && !hasInstitution)).map(t => t.key);
+            const currentIdx = tabs.indexOf(tab);
+            if (dx < 0 && currentIdx < tabs.length - 1) setTab(tabs[currentIdx + 1]);
+            else if (dx > 0 && currentIdx > 0) setTab(tabs[currentIdx - 1]);
+          }
+        }}
+      >
       {/* Feed */}
       {isLoading ? (
         <SkeletonFeed count={4} />
@@ -143,6 +163,7 @@ export function HomeFeed() {
       )}
 
       <div className="h-20" />
+      </div>
     </div>
   );
 }

@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const activeItem = NAV.find((n) => n.match(view));
 
-  // Double/triple-click on Home button to refresh the feed
+  // Double-click on Home = feed refresh (reload page), 5 clicks = full refresh
   const homeClicks = useRef(0);
   const homeClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,13 +69,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     homeClicks.current += 1;
     if (homeClickTimer.current) clearTimeout(homeClickTimer.current);
     homeClickTimer.current = setTimeout(() => {
-      if (homeClicks.current >= 2) {
-        // Double or triple click — refresh
-        setRefreshing(true);
-        // Force a page reload to refresh all data
-        if (typeof window !== "undefined") {
-          window.location.reload();
-        }
+      if (homeClicks.current >= 5) {
+        // 5+ clicks — full page reload
+        if (typeof window !== "undefined") window.location.reload();
+      } else if (homeClicks.current >= 2) {
+        // 2-4 clicks — refresh feed by reloading
+        if (typeof window !== "undefined") window.location.reload();
       } else {
         // Single click — navigate home
         nav({ name: "home" });
