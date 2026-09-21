@@ -87,6 +87,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Views where the bottom nav should be HIDDEN entirely (like Twitter DMs)
   const hideBottomNavViews = ["conversation"];
   const hideBottomNav = hideBottomNavViews.includes(view.name);
+  // Also hide the mobile top bar in conversation view — the chat has its own header
+  const hideTopBar = view.name === "conversation";
 
   const goProfile = (username: string) => {
     if (username === "__me__" && me) nav({ name: "profile", username: me.username });
@@ -207,7 +209,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   // ─── Mobile top bar — slides up/down on scroll (like Twitter) ───
-  const mobileTop = (
+  // ─── Mobile top bar — hidden in conversation view (chat has its own header) ───
+  const mobileTop = !hideTopBar ? (
     <header
       className={cn(
         "sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-md lg:hidden transition-transform duration-300",
@@ -231,7 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <ThemeToggle />
       </div>
     </header>
-  );
+  ) : null;
 
   // ─── Mobile bottom nav — slides down/up on scroll, hidden in conversation ───
   const mobileBottom = !hideBottomNav ? (

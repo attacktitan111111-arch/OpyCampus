@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 import type { MediaItem } from "@/lib/hooks";
+import { useMounted } from "@/hooks/use-mounted";
 
 interface MediaLightboxProps {
   media: MediaItem[];
@@ -12,8 +14,15 @@ interface MediaLightboxProps {
 }
 
 export function MediaLightbox({ media, initialIndex = 0, open, onClose }: MediaLightboxProps) {
-  if (!open || media.length === 0) return null;
-  return <MediaLightboxInner media={media} initialIndex={initialIndex} onClose={onClose} />;
+  const mounted = useMounted();
+
+  if (!open || media.length === 0 || !mounted) return null;
+
+  // Render via portal to escape any parent onClick handlers
+  return createPortal(
+    <MediaLightboxInner media={media} initialIndex={initialIndex} onClose={onClose} />,
+    document.body
+  );
 }
 
 function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem[]; initialIndex: number; onClose: () => void }) {
@@ -25,7 +34,7 @@ function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); onClose(); }
+      if (e.key === "Escape" || e.key === "Backspace") { e.preventDefault(); onClose(); }
       else if (e.key === "ArrowLeft" && media.length > 1) goPrev();
       else if (e.key === "ArrowRight" && media.length > 1) goNext();
     };
@@ -36,16 +45,16 @@ function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem
   }, [onClose, goPrev, goNext, media.length]);
 
   const current = media[index];
-  // Build absolute URL for the image — relative URLs might not work when rendered in a fixed overlay
-  const mediaUrl = current.url.startsWith("http") ? current.url : `${window.location.origin}${current.url}`;
+  const mediaUrl = current.url.startsWith("http") ? current.url : (typeof window !== "undefined" ? `${window.location.origin}${current.url}` : current.url);
 
   return (
-    // Fixed full-screen overlay — z-[200] so it's above everything
+    // Fixed full-screen overlay — rendered via portal to document.body
+    // No parent onClick can interfere
     <div className="fixed inset-0 z-[200] flex flex-col bg-black animate-fade-in">
       {/* ─── Top bar with back button + close button ─── */}
       <div className="flex shrink-0 items-center justify-between px-4 py-3" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}>
-        {/* Back button — always visible, always works */}
-        <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20" aria-label="Back">
+        {/* Back button — always works */}
+        <button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20" aria-label="Go back">
           <ArrowLeft className="h-5 w-5" />
         </button>
         {/* Counter */}
@@ -69,10 +78,10 @@ function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem
           </button>
         )}
 
-        {/* Media content */}
-        <div className="flex max-h-full max-w-full items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        {/* Media content — stopPropagation so clicking the image doesn't close */}
+        <div className="flex max-h-full max-w-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
           {imgError ? (
-            <div className="flex flex-col items-center gap-2 text-white/50">
+            <div className="flex flex-col items-center gap-3 text-white/60">
               <p className="text-[15px]">Couldn't load media</p>
               <button onClick={onClose} className="rounded-full bg-white/10 px-4 py-2 text-[14px] text-white transition hover:bg-white/20">Go back</button>
             </div>

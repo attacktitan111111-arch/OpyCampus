@@ -93,7 +93,7 @@ export function ConversationView({ id }: { id: string }) {
   // Loading state
   if (isLoading) {
     return (
-      <div className="fixed inset-0 top-14 z-50 flex flex-col bg-background lg:top-0 lg:inset-0">
+      <div className="fixed inset-0 z-50 flex flex-col bg-background">
         <ConvHeader other={null} back={back} nav={nav} loading />
         <div className="flex-1 flex items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
@@ -104,7 +104,7 @@ export function ConversationView({ id }: { id: string }) {
 
   if (isError) {
     return (
-      <div className="fixed inset-0 top-14 z-50 flex flex-col bg-background lg:top-0 lg:inset-0">
+      <div className="fixed inset-0 z-50 flex flex-col bg-background">
         <ConvHeader other={null} back={back} nav={nav} />
         <EmptyState icon={MessageCircle} title="Conversation not found" description="This conversation may have been removed." className="py-20" action={<Button variant="secondary" className="rounded-full" onClick={() => nav({ name: "messages" })}>Back to messages</Button>} />
       </div>
@@ -113,8 +113,8 @@ export function ConversationView({ id }: { id: string }) {
 
   return (
     // ─── WhatsApp-style layout ───
-    // Fixed full-screen overlay with: header at top, messages in middle, composer at bottom
-    <div className="fixed inset-0 top-14 z-50 flex flex-col bg-background lg:top-0 lg:inset-0">
+    // Full-screen fixed overlay — starts from top:0, includes safe area padding in the header
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
       {/* ─── HEADER: always fixed at top, never moves ─── */}
       <ConvHeader other={other} back={back} nav={nav} />
 

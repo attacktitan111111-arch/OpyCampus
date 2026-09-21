@@ -30,7 +30,8 @@ export function EngagementBar({ post, onComment }: { post: Post; onComment?: () 
 
   const toggleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (likeMut.isPending) return;
+    // Don't block on isPending — optimistic updates mean the UI updates instantly
+    // The server request fires in the background
     if (!post.liked) {
       setAnimLike(true);
       setTimeout(() => setAnimLike(false), 500);
@@ -72,7 +73,6 @@ export function EngagementBar({ post, onComment }: { post: Post; onComment?: () 
       {/* Like — FIRST (left), bigger */}
       <button
         onClick={toggleLike}
-        disabled={likeMut.isPending}
         className={cn(
           "group flex items-center gap-1.5 rounded-full px-3 py-2 transition-colors tap-highlight-none",
           post.liked ? "text-rose-500" : "text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"

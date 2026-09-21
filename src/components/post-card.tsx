@@ -206,17 +206,13 @@ export function PostCard({ post }: { post: Post }) {
         </div>
       </div>
 
-      {/* Fullscreen media lightbox — rendered OUTSIDE the article so close clicks don't trigger navigation */}
-      {lightboxIndex !== null && (
-        <div onClick={(e) => e.stopPropagation()}>
-          <MediaLightbox
-            media={post.media}
-            initialIndex={lightboxIndex ?? 0}
-            open={lightboxIndex !== null}
-            onClose={() => setLightboxIndex(null)}
-          />
-        </div>
-      )}
+      {/* Fullscreen media lightbox — rendered via portal to document.body, so no parent onClick interference */}
+      <MediaLightbox
+        media={post.media}
+        initialIndex={lightboxIndex ?? 0}
+        open={lightboxIndex !== null}
+        onClose={() => setLightboxIndex(null)}
+      />
     </article>
   );
 }
