@@ -206,13 +206,17 @@ export function PostCard({ post }: { post: Post }) {
         </div>
       </div>
 
-      {/* Fullscreen media lightbox — opens when any image/video in the grid is clicked */}
-      <MediaLightbox
-        media={post.media}
-        initialIndex={lightboxIndex ?? 0}
-        open={lightboxIndex !== null}
-        onClose={() => setLightboxIndex(null)}
-      />
+      {/* Fullscreen media lightbox — rendered OUTSIDE the article so close clicks don't trigger navigation */}
+      {lightboxIndex !== null && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <MediaLightbox
+            media={post.media}
+            initialIndex={lightboxIndex ?? 0}
+            open={lightboxIndex !== null}
+            onClose={() => setLightboxIndex(null)}
+          />
+        </div>
+      )}
     </article>
   );
 }

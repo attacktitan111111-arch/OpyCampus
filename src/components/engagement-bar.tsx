@@ -117,7 +117,7 @@ export function EngagementBar({ post, onComment }: { post: Post; onComment?: () 
             <MoreHorizontal className="h-[21px] w-[21px] transition-transform group-active:scale-90" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuContent align="end" side="top" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuItem onClick={toggleRepost} className={cn(post.reposted && "text-emerald-500")}>
             <Repeat2 className="mr-2 h-4 w-4" /> {post.reposted ? "Undo repost" : "Repost"}
           </DropdownMenuItem>

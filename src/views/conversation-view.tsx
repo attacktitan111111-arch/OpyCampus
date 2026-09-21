@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, MessageCircle, Phone, Video, Paperclip, Image as ImageIcon, Smile, X, Mic, FileText, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useConversationMessages, useSendMessage, useUploadFile, type MessageItem } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
-import { EmptyState, SkeletonConversation, InlineSpinner } from "@/components/view-helpers";
+import { EmptyState, InlineSpinner } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -24,16 +24,30 @@ export function ConversationView({ id }: { id: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const other = data?.conversation.other ?? null;
   const messages = data?.messages ?? [];
+
+  // Track keyboard height using VisualViewport API
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const onResize = () => {
+      const vh = window.visualViewport.height;
+      const wh = window.innerHeight;
+      const kb = Math.max(0, wh - vh);
+      setKeyboardHeight(kb);
+    };
+    window.visualViewport.addEventListener("resize", onResize);
+    return () => window.visualViewport?.removeEventListener("resize", onResize);
+  }, []);
 
   // Auto-scroll on new messages
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages.length, id]);
+  }, [messages.length, id, keyboardHeight]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -90,15 +104,13 @@ export function ConversationView({ id }: { id: string }) {
     textareaRef.current?.focus();
   };
 
-  // Loading state — show immediately, no slow skeleton
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex h-[calc(100vh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100vh]">
         <ConvHeader other={null} back={back} nav={nav} loading />
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="flex h-full items-center justify-center">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
-          </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
         </div>
       </div>
     );
@@ -114,13 +126,13 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    // ─── ROOT: fixed height = full viewport. Uses vh (not dvh) so keyboard doesn't resize. ───
+    // ─── ROOT: fixed height, uses vh so keyboard doesn't resize the whole page ───
     <div className="flex h-[calc(100vh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100vh]">
-      {/* ─── HEADER: shrink-0, not sticky, fixed at top of the flex column ─── */}
+      {/* ─── HEADER: shrink-0, always fixed at top. Never moves. ─── */}
       <ConvHeader other={other} back={back} nav={nav} />
 
-      {/* ─── MESSAGES: flex-1, scrolls internally. Never overflows horizontally. ─── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3">
+      {/* ─── MESSAGES: flex-1, scrolls internally. Shrinks when keyboard opens. ─── */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3" style={{ paddingBottom: keyboardHeight > 0 ? "0" : undefined }}>
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-muted-foreground">
@@ -174,8 +186,15 @@ export function ConversationView({ id }: { id: string }) {
       <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "image"); e.target.value = ""; }} />
       <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "file"); e.target.value = ""; }} />
 
-      {/* ─── COMPOSER: shrink-0, always at bottom, never scrolls away ─── */}
-      <div className="shrink-0 border-t border-border bg-background px-2 py-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
+      {/* ─── COMPOSER: moves up with keyboard, stays at bottom ─── */}
+      <div
+        className="shrink-0 border-t border-border bg-background px-2 py-2"
+        style={{
+          paddingBottom: `calc(0.5rem + env(safe-area-inset-bottom, 0px))`,
+          transform: keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : "none",
+          transition: "transform 0.1s ease-out",
+        }}
+      >
         <div className="flex items-end gap-1.5">
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading || pendingMedia.length >= 4} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40 tap-highlight-none" aria-label="Attach file">
             {uploading ? <InlineSpinner className="h-5 w-5" /> : <Paperclip className="h-[19px] w-[19px]" />}

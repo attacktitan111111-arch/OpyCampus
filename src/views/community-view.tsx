@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, Lock, Globe, Users, PenSquare, ShieldCheck, Plus, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useApp, useCommunity, useCommunityFeed, useJoinCommunity, useSession } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
 import { PostCard } from "@/components/post-card";
