@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Home, Plus, User as UserIcon, Bookmark, Settings as SettingsIcon, Search, ArrowLeft, Users, LogOut, Bell, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useSession, useNotifications, useLogout } from "@/lib/hooks";
@@ -57,8 +57,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [fabVisible, setFabVisible] = useState(true);
   const [topBarVisible, setTopBarVisible] = useState(true);
   const [bottomNavVisible, setBottomNavVisible] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const activeItem = NAV.find((n) => n.match(view));
+
+  // Double/triple-click on Home button to refresh the feed
+  const homeClicks = useRef(0);
+  const homeClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleHomeClick = () => {
+    homeClicks.current += 1;
+    if (homeClickTimer.current) clearTimeout(homeClickTimer.current);
+    homeClickTimer.current = setTimeout(() => {
+      if (homeClicks.current >= 2) {
+        // Double or triple click — refresh
+        setRefreshing(true);
+        // Force a page reload to refresh all data
+        if (typeof window !== "undefined") {
+          window.location.reload();
+        }
+      } else {
+        // Single click — navigate home
+        nav({ name: "home" });
+      }
+      homeClicks.current = 0;
+    }, 300);
+  };
 
   // Views where the bottom nav should be HIDDEN entirely (like Twitter DMs)
   const hideBottomNavViews = ["conversation"];
@@ -221,7 +245,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {NAV.map((item) => {
         const active = !!activeItem && item.key === activeItem.key;
         return (
-          <button key={item.key} onClick={() => (item.key === "profile" ? goProfile("__me__") : nav(item.view))} className={cn("relative inline-flex h-11 w-11 items-center justify-center rounded-full transition tap-highlight-none", active ? "text-foreground" : "text-muted-foreground hover:text-foreground")} aria-label={item.label}>
+          <button key={item.key} onClick={() => (item.key === "profile" ? goProfile("__me__") : item.key === "home" ? handleHomeClick() : nav(item.view))} className={cn("relative inline-flex h-11 w-11 items-center justify-center rounded-full transition tap-highlight-none", active ? "text-foreground" : "text-muted-foreground hover:text-foreground")} aria-label={item.label}>
             {item.customIcon === "community" ? <CommunityIcon className="h-[24px] w-[24px]" /> : <item.icon className={cn("h-[24px] w-[24px]", active && "fill-foreground/10")} />}
             {item.key === "profile" && me && <UserAvatar name="me" avatarUrl={me.avatarUrl} size={24} className={cn("absolute", active && "ring-2 ring-foreground")} />}
           </button>

@@ -5,7 +5,6 @@ import { Users, School, PenSquare, Sparkles, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useApp, useFeed, useSession } from "@/lib/hooks";
-import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { PostCard } from "@/components/post-card";
 import { EmptyState, SkeletonFeed } from "@/components/view-helpers";
 import { Button } from "@/components/ui/button";
@@ -42,18 +41,15 @@ export function HomeFeed() {
   const posts = data?.posts ?? [];
   const hasInstitution = !!session?.user?.institution;
 
-  const { pullDistance, isRefreshing } = usePullToRefresh(async () => {
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
     await refetch();
-  });
+    setRefreshing(false);
+  };
 
   return (
-    <div className="w-full" style={{ transform: `translateY(${pullDistance}px)`, transition: pullDistance === 0 ? "transform 0.3s ease-out" : "none" }}>
-      {/* Pull-to-refresh spinner */}
-      {(pullDistance > 0 || isRefreshing) && (
-        <div className="flex items-center justify-center py-2" style={{ height: Math.max(pullDistance, isRefreshing ? 40 : 0) }}>
-          <RefreshCw className={cn("h-5 w-5 text-muted-foreground", isRefreshing && "animate-spin")} style={{ opacity: Math.min(pullDistance / 60, 1) }} />
-        </div>
-      )}
+    <div className="w-full">
       {/* Tabs — slides up/down with the top bar on scroll */}
       <div className={cn("sticky top-14 z-20 border-b border-border bg-background/90 backdrop-blur-md transition-transform duration-300 lg:top-0", tabsVisible ? "translate-y-0" : "-translate-y-full")}>
         <div className="relative flex overflow-x-hidden">

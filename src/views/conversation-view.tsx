@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Send, MessageCircle, Phone, Video, Paperclip, Image as ImageIcon, Smile, X, Mic, FileText, Play } from "lucide-react";
+import { Send, MessageCircle, Phone, Video, Paperclip, Image as ImageIcon, Smile, X, Mic, FileText, Play, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useConversationMessages, useSendMessage, useUploadFile, type MessageItem } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
@@ -24,30 +24,16 @@ export function ConversationView({ id }: { id: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const other = data?.conversation.other ?? null;
   const messages = data?.messages ?? [];
-
-  // Track keyboard height using VisualViewport API
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
-    const onResize = () => {
-      const vh = window.visualViewport.height;
-      const wh = window.innerHeight;
-      const kb = Math.max(0, wh - vh);
-      setKeyboardHeight(kb);
-    };
-    window.visualViewport.addEventListener("resize", onResize);
-    return () => window.visualViewport?.removeEventListener("resize", onResize);
-  }, []);
 
   // Auto-scroll on new messages
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages.length, id, keyboardHeight]);
+  }, [messages.length, id]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -107,7 +93,7 @@ export function ConversationView({ id }: { id: string }) {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100vh]">
+      <div className="fixed inset-0 top-14 z-50 flex flex-col bg-background lg:top-0 lg:inset-0">
         <ConvHeader other={null} back={back} nav={nav} loading />
         <div className="flex-1 flex items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
@@ -118,7 +104,7 @@ export function ConversationView({ id }: { id: string }) {
 
   if (isError) {
     return (
-      <div className="flex h-[calc(100vh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100vh]">
+      <div className="fixed inset-0 top-14 z-50 flex flex-col bg-background lg:top-0 lg:inset-0">
         <ConvHeader other={null} back={back} nav={nav} />
         <EmptyState icon={MessageCircle} title="Conversation not found" description="This conversation may have been removed." className="py-20" action={<Button variant="secondary" className="rounded-full" onClick={() => nav({ name: "messages" })}>Back to messages</Button>} />
       </div>
@@ -126,13 +112,14 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   return (
-    // ─── ROOT: fixed height, uses vh so keyboard doesn't resize the whole page ───
-    <div className="flex h-[calc(100vh-3.5rem)] w-full flex-col overflow-hidden bg-background lg:h-[100vh]">
-      {/* ─── HEADER: shrink-0, always fixed at top. Never moves. ─── */}
+    // ─── WhatsApp-style layout ───
+    // Fixed full-screen overlay with: header at top, messages in middle, composer at bottom
+    <div className="fixed inset-0 top-14 z-50 flex flex-col bg-background lg:top-0 lg:inset-0">
+      {/* ─── HEADER: always fixed at top, never moves ─── */}
       <ConvHeader other={other} back={back} nav={nav} />
 
-      {/* ─── MESSAGES: flex-1, scrolls internally. Shrinks when keyboard opens. ─── */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3" style={{ paddingBottom: keyboardHeight > 0 ? "0" : undefined }}>
+      {/* ─── MESSAGES: flex-1, scrolls internally ─── */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-muted-foreground">
@@ -186,15 +173,8 @@ export function ConversationView({ id }: { id: string }) {
       <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "image"); e.target.value = ""; }} />
       <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "file"); e.target.value = ""; }} />
 
-      {/* ─── COMPOSER: moves up with keyboard, stays at bottom ─── */}
-      <div
-        className="shrink-0 border-t border-border bg-background px-2 py-2"
-        style={{
-          paddingBottom: `calc(0.5rem + env(safe-area-inset-bottom, 0px))`,
-          transform: keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : "none",
-          transition: "transform 0.1s ease-out",
-        }}
-      >
+      {/* ─── COMPOSER: fixed at the very bottom, always visible ─── */}
+      <div className="shrink-0 border-t border-border bg-background px-2 py-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
         <div className="flex items-end gap-1.5">
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading || pendingMedia.length >= 4} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40 tap-highlight-none" aria-label="Attach file">
             {uploading ? <InlineSpinner className="h-5 w-5" /> : <Paperclip className="h-[19px] w-[19px]" />}
@@ -213,15 +193,16 @@ export function ConversationView({ id }: { id: string }) {
   );
 }
 
-// ─── Header — NOT sticky, just shrink-0 at top of flex column ───
+// ─── Header — fixed at top, never moves ───
 function ConvHeader({ other, back, nav, loading }: { other: any; back: () => void; nav: any; loading?: boolean }) {
   return (
-    <div className="flex shrink-0 items-center gap-3 border-b border-border bg-background px-4 py-2.5" style={{ paddingTop: "calc(0.625rem + env(safe-area-inset-top, 0px))" }}>
-      <button onClick={back} className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-accent tap-highlight-none" aria-label="Back">
-        <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5"><path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-background px-2 py-2" style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top, 0px))" }}>
+      {/* Back button — always visible */}
+      <button onClick={back} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent tap-highlight-none" aria-label="Back">
+        <ArrowLeft className="h-5 w-5" />
       </button>
       {other ? (
-        <button onClick={() => nav({ name: "profile", username: other.username })} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+        <button onClick={() => nav({ name: "profile", username: other.username })} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
           <UserAvatar name={other.name} username={other.username} avatarUrl={other.avatarUrl} size={36} />
           <div className="min-w-0">
             <div className="flex items-center gap-1 truncate">
@@ -234,7 +215,7 @@ function ConvHeader({ other, back, nav, loading }: { other: any; back: () => voi
       ) : (
         <div className="min-w-0 flex-1"><p className="truncate text-[15px] font-semibold leading-tight">{loading ? "Loading…" : "Conversation"}</p></div>
       )}
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-0.5">
         <button onClick={() => toast.info("Audio calling coming soon")} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-emerald-500 tap-highlight-none" aria-label="Audio call"><Phone className="h-[18px] w-[18px]" /></button>
         <button onClick={() => toast.info("Video calling coming soon")} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-sky-500 tap-highlight-none" aria-label="Video call"><Video className="h-[19px] w-[19px]" /></button>
       </div>
