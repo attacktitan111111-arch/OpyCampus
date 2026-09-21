@@ -32,25 +32,19 @@ function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem
   const goPrev = useCallback(() => { setIndex((i) => (i - 1 + media.length) % media.length); setImgError(false); }, [media.length]);
   const goNext = useCallback(() => { setIndex((i) => (i + 1) % media.length); setImgError(false); }, [media.length]);
 
-  // Block ALL interaction with the app behind the lightbox
+  // Keyboard + body scroll lock
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" || e.key === "Backspace") { e.preventDefault(); e.stopPropagation(); onClose(); }
       else if (e.key === "ArrowLeft" && media.length > 1) goPrev();
       else if (e.key === "ArrowRight" && media.length > 1) goNext();
     };
-
-    // Block all clicks/touches on the body behind the lightbox
-    const blockEvent = (e: Event) => { e.preventDefault(); e.stopPropagation(); };
-
     window.addEventListener("keydown", onKey, true);
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    document.body.style.pointerEvents = "none"; // block all interaction behind
-
     return () => {
       window.removeEventListener("keydown", onKey, true);
-      document.body.style.overflow = "";
-      document.body.style.pointerEvents = "";
+      document.body.style.overflow = prevOverflow;
     };
   }, [onClose, goPrev, goNext, media.length]);
 
@@ -71,22 +65,32 @@ function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem
     }
   };
 
+  // THE KEY: This is a true modal overlay.
+  // 1. It's rendered via portal to document.body (outside all app DOM)
+  // 2. It covers the entire screen (fixed inset-0)
+  // 3. It has z-[200] (above everything)
+  // 4. The backdrop div captures ALL touch/click events and stops them
+  // 5. Only the buttons inside receive clicks
   return (
-    // Separate full-screen page — completely isolated from the app
-    // pointerEvents:auto on this div so it receives all touches
     <div
       className="fixed inset-0 z-[200] flex flex-col bg-black"
-      style={{ pointerEvents: "auto", touchAction: "manipulation" }}
+      style={{ touchAction: "manipulation" }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      // This onClick + onPointerDown on the ROOT div catches everything
+      // and stops it from reaching the app behind
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
     >
       {/* ─── Top bar ─── */}
       <div className="flex shrink-0 items-center justify-between px-4 py-3" style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top, 0px))" }}>
-        {/* Back button — uses mousedown to fire before any other handler */}
+        {/* Back button */}
         <button
           type="button"
-          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          onPointerDown={(e) => { e.stopPropagation(); }}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20 z-10"
           aria-label="Go back"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -102,21 +106,23 @@ function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem
         {/* Close X button */}
         <button
           type="button"
-          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          onPointerDown={(e) => { e.stopPropagation(); }}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20 z-10"
           aria-label="Close"
         >
           <X className="h-5 w-5" />
         </button>
       </div>
 
-      {/* ─── Media area ─── */}
+      {/* ─── Media area — tapping here does nothing (no onClose on backdrop) ─── */}
       <div className="flex flex-1 items-center justify-center overflow-hidden">
         {/* Prev button */}
         {media.length > 1 && (
           <button
             type="button"
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); goPrev(); }}
+            onClick={(e) => { e.stopPropagation(); goPrev(); }}
+            onPointerDown={(e) => { e.stopPropagation(); }}
             className="absolute left-3 z-10 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20"
             aria-label="Previous"
           >
@@ -125,12 +131,13 @@ function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem
         )}
 
         {/* Media content */}
-        <div className="flex max-h-full max-w-full items-center justify-center p-4">
+        <div className="flex max-h-full max-w-full items-center justify-center p-4" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
           {imgError ? (
             <div className="flex flex-col items-center gap-3 text-white/60">
               <p className="text-[15px]">Couldn't load media</p>
               <button
-                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                onPointerDown={(e) => { e.stopPropagation(); }}
                 className="rounded-full bg-white/10 px-4 py-2 text-[14px] text-white transition hover:bg-white/20"
               >
                 Go back
@@ -153,7 +160,8 @@ function MediaLightboxInner({ media, initialIndex, onClose }: { media: MediaItem
         {media.length > 1 && (
           <button
             type="button"
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); goNext(); }}
+            onClick={(e) => { e.stopPropagation(); goNext(); }}
+            onPointerDown={(e) => { e.stopPropagation(); }}
             className="absolute right-3 z-10 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition hover:bg-white/20"
             aria-label="Next"
           >

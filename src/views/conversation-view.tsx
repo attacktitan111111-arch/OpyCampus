@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Send, MessageCircle, Phone, Video, Paperclip, Image as ImageIcon, Smile, X, Mic, FileText, Play, ArrowLeft } from "lucide-react";
+import { Send, MessageCircle, Phone, Video, Paperclip, Image as ImageIcon, Smile, X, Mic, FileText, Play, ArrowLeft, Check, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useConversationMessages, useSendMessage, useUploadFile, type MessageItem } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
@@ -20,6 +20,7 @@ export function ConversationView({ id }: { id: string }) {
   const [showEmoji, setShowEmoji] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<{ url: string; type: string; name?: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -28,12 +29,25 @@ export function ConversationView({ id }: { id: string }) {
   const other = data?.conversation.other ?? null;
   const messages = data?.messages ?? [];
 
-  // Auto-scroll on new messages
+  // ─── Keyboard height detection via VisualViewport ───
+  // This lets us move ONLY the composer up by the keyboard height
+  // while keeping the header fixed at top:0 (never moves)
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const onResize = () => {
+      const kb = Math.max(0, window.innerHeight - window.visualViewport.height);
+      setKbHeight(kb);
+    };
+    window.visualViewport.addEventListener("resize", onResize);
+    return () => window.visualViewport?.removeEventListener("resize", onResize);
+  }, []);
+
+  // Auto-scroll on new messages or keyboard change
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages.length, id]);
+  }, [messages.length, id, kbHeight]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -111,25 +125,26 @@ export function ConversationView({ id }: { id: string }) {
     );
   }
 
+  // ─── WhatsApp-style layout ───
+  // Three layers, all position:fixed:
+  // 1. Header — fixed at top:0, NEVER moves (even with keyboard)
+  // 2. Messages — fixed between header and composer, scrolls internally
+  // 3. Composer — fixed at bottom, moves UP by kbHeight when keyboard opens
   return (
-    // ─── WhatsApp-style layout ───
-    // Full-screen fixed overlay. Uses dvh so it adapts to keyboard.
-    // Header is fixed position (not flex child) so it NEVER moves.
-    // Composer is fixed position at bottom so it NEVER moves.
-    // Messages area sits between them and scrolls.
     <>
-      {/* ─── HEADER: position fixed, always at top, never moves ─── */}
-      <div className="fixed top-0 left-0 right-0 z-[60] bg-background">
+      {/* ─── 1. HEADER — fixed at top, never moves ─── */}
+      <div className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <ConvHeader other={other} back={back} nav={nav} />
       </div>
 
-      {/* ─── MESSAGES: fixed position below header, above composer ─── */}
+      {/* ─── 2. MESSAGES — fixed between header and composer ─── */}
       <div
         ref={scrollRef}
-        className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3"
+        className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3 bg-background"
         style={{
-          top: "calc(3.5rem + env(safe-area-inset-top, 0px))",
-          bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))",
+          top: `calc(3.5rem + env(safe-area-inset-top, 0px))`,
+          bottom: `calc(3.5rem + env(safe-area-inset-bottom, 0px) + ${kbHeight}px)`,
+          transition: "bottom 0.15s ease-out",
         }}
       >
         {messages.length === 0 ? (
@@ -153,10 +168,17 @@ export function ConversationView({ id }: { id: string }) {
         )}
       </div>
 
-      {/* ─── PENDING MEDIA PREVIEW — fixed above composer ─── */}
-      {pendingMedia.length > 0 && (
-        <div className="fixed left-0 right-0 z-[55] border-t border-border bg-secondary/30 px-3 py-2" style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+      {/* ─── 3. COMPOSER — fixed at bottom, moves up with keyboard ─── */}
+      <div
+        className="fixed left-0 right-0 z-[60] border-t border-border bg-background px-2 py-2"
+        style={{
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${kbHeight}px)`,
+          transition: "bottom 0.15s ease-out",
+        }}
+      >
+        {/* Pending media preview */}
+        {pendingMedia.length > 0 && (
+          <div className="mb-2 flex gap-2 overflow-x-auto no-scrollbar">
             {pendingMedia.map((m, i) => (
               <div key={i} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
                 {m.type === "image" ? <img src={m.url} alt="" className="h-full w-full object-cover" />
@@ -167,26 +189,24 @@ export function ConversationView({ id }: { id: string }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ─── EMOJI PICKER — fixed above composer ─── */}
-      {showEmoji && (
-        <div className="fixed left-0 right-0 z-[55] border-t border-border bg-background p-2" style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}>
-          <div className="grid grid-cols-8 gap-1">
-            {EMOJIS.map((e, i) => (
-              <button key={i} onClick={() => insertEmoji(e)} className="rounded-lg p-1.5 text-xl transition hover:bg-accent tap-highlight-none">{e}</button>
-            ))}
+        {/* Emoji picker */}
+        {showEmoji && (
+          <div className="mb-2 border-t border-border bg-background p-2">
+            <div className="grid grid-cols-8 gap-1">
+              {EMOJIS.map((e, i) => (
+                <button key={i} onClick={() => insertEmoji(e)} className="rounded-lg p-1.5 text-xl transition hover:bg-accent tap-highlight-none">{e}</button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Hidden file inputs */}
-      <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "image"); e.target.value = ""; }} />
-      <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "file"); e.target.value = ""; }} />
+        {/* Hidden file inputs */}
+        <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "image"); e.target.value = ""; }} />
+        <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "file"); e.target.value = ""; }} />
 
-      {/* ─── COMPOSER: position fixed at the very bottom, always visible ─── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[60] border-t border-border bg-background px-2 py-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
+        {/* Input bar */}
         <div className="flex items-end gap-1.5">
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading || pendingMedia.length >= 4} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40 tap-highlight-none" aria-label="Attach file">
             {uploading ? <InlineSpinner className="h-5 w-5" /> : <Paperclip className="h-[19px] w-[19px]" />}
@@ -208,7 +228,7 @@ export function ConversationView({ id }: { id: string }) {
 // ─── Header — fixed at top, never moves ───
 function ConvHeader({ other, back, nav, loading }: { other: any; back: () => void; nav: any; loading?: boolean }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-border bg-background px-2 py-2" style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top, 0px))" }}>
+    <div className="flex shrink-0 items-center gap-2 px-2 py-2">
       {/* Back button — always visible */}
       <button onClick={back} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent tap-highlight-none" aria-label="Back">
         <ArrowLeft className="h-5 w-5" />
@@ -221,12 +241,13 @@ function ConvHeader({ other, back, nav, loading }: { other: any; back: () => voi
               <span className="truncate text-[15px] font-semibold leading-tight">{other.name}</span>
               {other.verified && <VerifiedBadge className="h-4 w-4 text-primary shrink-0" />}
             </div>
-            <p className="truncate text-[12px] text-muted-foreground">@{other.username}</p>
+            <p className="truncate text-[12px] text-emerald-500">● online</p>
           </div>
         </button>
       ) : (
         <div className="min-w-0 flex-1"><p className="truncate text-[15px] font-semibold leading-tight">{loading ? "Loading…" : "Conversation"}</p></div>
       )}
+      {/* Call buttons */}
       <div className="flex shrink-0 items-center gap-0.5">
         <button onClick={() => toast.info("Audio calling coming soon")} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-emerald-500 tap-highlight-none" aria-label="Audio call"><Phone className="h-[18px] w-[18px]" /></button>
         <button onClick={() => toast.info("Video calling coming soon")} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-sky-500 tap-highlight-none" aria-label="Video call"><Video className="h-[19px] w-[19px]" /></button>
@@ -235,7 +256,7 @@ function ConvHeader({ other, back, nav, loading }: { other: any; back: () => voi
   );
 }
 
-// ─── Message bubble ───
+// ─── Message bubble — with color variety and status indicators ───
 function MessageBubble({ message, grouped, otherAvatar, otherName, otherUsername }: { message: MessageItem; grouped: boolean; otherAvatar?: string | null; otherName: string; otherUsername: string }) {
   const { isMe, content, media } = message;
   const hasMedia = media && media.length > 0;
@@ -268,8 +289,20 @@ function MessageBubble({ message, grouped, otherAvatar, otherName, otherUsername
           </div>
         )}
         {hasText && (
-          <div className={cn("whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[15px] leading-[1.4] text-pretty", isMe ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground", hasMedia && "rounded-lg text-[14px]")}>
+          <div className={cn(
+            "whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[15px] leading-[1.4] text-pretty",
+            isMe
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-secondary-foreground",
+            hasMedia && "rounded-lg text-[14px]"
+          )}>
             {content}
+            {/* Message status for own messages (sent/delivered/seen) */}
+            {isMe && (
+              <span className="ml-1.5 inline-flex items-center gap-0.5 align-bottom opacity-70">
+                <CheckCheck className="h-3.5 w-3.5" />
+              </span>
+            )}
           </div>
         )}
       </div>
