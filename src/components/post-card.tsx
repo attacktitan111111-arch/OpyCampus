@@ -54,6 +54,7 @@ export function PostCard({ post }: { post: Post }) {
   // Open lightbox via store — renders at page.tsx level, completely outside this article
   const openLightboxAt = (e: React.MouseEvent, i: number) => {
     e.stopPropagation();
+    e.preventDefault();
     openLightbox(post.media, i);
   };
 
@@ -167,7 +168,8 @@ export function PostCard({ post }: { post: Post }) {
                       src={m.url}
                       alt=""
                       loading="lazy"
-                      onClick={(e) => { e.stopPropagation(); openLightboxAt(e, i); }}
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); openLightbox(post.media, i); }}
+                      onPointerDown={(e) => e.stopPropagation()}
                       className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-95"
                     />
                   )}
