@@ -168,8 +168,7 @@ export function PostCard({ post }: { post: Post }) {
                       src={m.url}
                       alt=""
                       loading="lazy"
-                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); openLightbox(post.media, i); }}
-                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); openLightbox(post.media, i); }}
                       className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-95"
                     />
                   )}
