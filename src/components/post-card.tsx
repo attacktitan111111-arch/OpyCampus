@@ -164,13 +164,19 @@ export function PostCard({ post }: { post: Post }) {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <img
-                      src={m.url}
-                      alt=""
-                      loading="lazy"
-                      onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); openLightbox(post.media, i); }}
-                      className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-95"
-                    />
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); openLightbox(post.media, i); }}
+                      className="h-full w-full cursor-pointer p-0 border-0 bg-transparent"
+                      aria-label={`View image ${i + 1}`}
+                    >
+                      <img
+                        src={m.url}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-opacity hover:opacity-95"
+                      />
+                    </button>
                   )}
                 </div>
               ))}
