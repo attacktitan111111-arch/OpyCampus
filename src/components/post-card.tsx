@@ -151,7 +151,6 @@ export function PostCard({ post }: { post: Post }) {
                 "mt-2.5 grid gap-1 overflow-hidden rounded-2xl border border-border bg-secondary/30",
                 post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"
               )}
-              onClick={(e) => e.stopPropagation()}
             >
               {post.media.slice(0, 4).map((m, i) => (
                 <div key={i} className={cn("relative overflow-hidden bg-secondary", post.media.length === 1 ? "max-h-[460px]" : "aspect-square")}>
