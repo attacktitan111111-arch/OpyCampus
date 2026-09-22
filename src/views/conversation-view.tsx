@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Send, MessageCircle, Phone, Video, Paperclip, Image as ImageIcon, Smile, X, Mic, FileText, Play, ArrowLeft, Check, CheckCheck } from "lucide-react";
+import { Send, MessageCircle, Phone, Video, Paperclip, Image as ImageIcon, Smile, X, Mic, FileText, Play, ArrowLeft, CheckCheck, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useApp, useConversationMessages, useSendMessage, useUploadFile, type MessageItem } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "@/components/user-avatar";
@@ -12,7 +12,7 @@ import { toast } from "sonner";
 const EMOJIS = ["😀","😂","🥰","😍","😎","🤔","😢","😡","👍","👎","❤️","🔥","✨","🎉","💯","🙏","👋","💪","🤝","📚","✏️","🎓","💡","⭐","🌟","💫","📝","✅","❌","💭","💬","📷","🎥","🎵","🎮","⚽","🏀","🎨","🔬","🧮"];
 
 export function ConversationView({ id }: { id: string }) {
-  const { back, nav } = useApp();
+  const { back, nav, openLightbox } = useApp();
   const { data, isLoading, isError } = useConversationMessages(id);
   const sendMut = useSendMessage();
   const uploadMut = useUploadFile();
@@ -20,7 +20,6 @@ export function ConversationView({ id }: { id: string }) {
   const [showEmoji, setShowEmoji] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<{ url: string; type: string; name?: string }[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [kbHeight, setKbHeight] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -29,25 +28,12 @@ export function ConversationView({ id }: { id: string }) {
   const other = data?.conversation.other ?? null;
   const messages = data?.messages ?? [];
 
-  // ─── Keyboard height detection via VisualViewport ───
-  // This lets us move ONLY the composer up by the keyboard height
-  // while keeping the header fixed at top:0 (never moves)
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
-    const onResize = () => {
-      const kb = Math.max(0, window.innerHeight - window.visualViewport.height);
-      setKbHeight(kb);
-    };
-    window.visualViewport.addEventListener("resize", onResize);
-    return () => window.visualViewport?.removeEventListener("resize", onResize);
-  }, []);
-
-  // Auto-scroll on new messages or keyboard change
+  // Auto-scroll on new messages
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages.length, id, kbHeight]);
+  }, [messages.length, id]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -126,27 +112,18 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   // ─── WhatsApp-style layout ───
-  // Three layers, all position:fixed:
-  // 1. Header — fixed at top:0, NEVER moves (even with keyboard)
-  // 2. Messages — fixed between header and composer, scrolls internally
-  // 3. Composer — fixed at bottom, moves UP by kbHeight when keyboard opens
+  // Uses dvh (dynamic viewport height) — the browser automatically shrinks
+  // this container when the keyboard opens. No manual keyboard height tracking needed.
+  // The flex column keeps header at top, messages scroll in middle, composer at bottom.
   return (
-    <>
-      {/* ─── 1. HEADER — fixed at top, never moves ─── */}
-      <div className="fixed top-0 left-0 right-0 z-[60] bg-background border-b border-border" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-background" style={{ height: "100dvh" }}>
+      {/* ─── HEADER — shrink-0, stays at top, NEVER moves ─── */}
+      <div className="shrink-0 border-b border-border bg-background" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
         <ConvHeader other={other} back={back} nav={nav} />
       </div>
 
-      {/* ─── 2. MESSAGES — fixed between header and composer ─── */}
-      <div
-        ref={scrollRef}
-        className="fixed left-0 right-0 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3 bg-background"
-        style={{
-          top: `calc(3.5rem + env(safe-area-inset-top, 0px))`,
-          bottom: `calc(3.5rem + env(safe-area-inset-bottom, 0px) + ${kbHeight}px)`,
-          transition: "bottom 0.15s ease-out",
-        }}
-      >
+      {/* ─── MESSAGES — flex-1, scrolls internally, shrinks when keyboard opens ─── */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-3 py-3">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-muted-foreground">
@@ -162,23 +139,16 @@ export function ConversationView({ id }: { id: string }) {
             {messages.map((m, i) => {
               const prev = messages[i - 1];
               const grouped = prev && prev.senderId === m.senderId && (new Date(m.createdAt).getTime() - new Date(prev.createdAt).getTime() < 5 * 60 * 1000);
-              return <MessageBubble key={m.id} message={m} grouped={!!grouped} otherAvatar={other?.avatarUrl} otherName={other?.name ?? ""} otherUsername={other?.username ?? ""} />;
+              return <MessageBubble key={m.id} message={m} grouped={!!grouped} otherAvatar={other?.avatarUrl} otherName={other?.name ?? ""} otherUsername={other?.username ?? ""} onImageClick={(media, idx) => openLightbox(media, idx)} />;
             })}
           </div>
         )}
       </div>
 
-      {/* ─── 3. COMPOSER — fixed at bottom, moves up with keyboard ─── */}
-      <div
-        className="fixed left-0 right-0 z-[60] border-t border-border bg-background px-2 py-2"
-        style={{
-          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${kbHeight}px)`,
-          transition: "bottom 0.15s ease-out",
-        }}
-      >
-        {/* Pending media preview */}
-        {pendingMedia.length > 0 && (
-          <div className="mb-2 flex gap-2 overflow-x-auto no-scrollbar">
+      {/* ─── PENDING MEDIA PREVIEW ─── */}
+      {pendingMedia.length > 0 && (
+        <div className="shrink-0 border-t border-border bg-secondary/30 px-3 py-2">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {pendingMedia.map((m, i) => (
               <div key={i} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
                 {m.type === "image" ? <img src={m.url} alt="" className="h-full w-full object-cover" />
@@ -189,24 +159,26 @@ export function ConversationView({ id }: { id: string }) {
               </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Emoji picker */}
-        {showEmoji && (
-          <div className="mb-2 border-t border-border bg-background p-2">
-            <div className="grid grid-cols-8 gap-1">
-              {EMOJIS.map((e, i) => (
-                <button key={i} onClick={() => insertEmoji(e)} className="rounded-lg p-1.5 text-xl transition hover:bg-accent tap-highlight-none">{e}</button>
-              ))}
-            </div>
+      {/* ─── EMOJI PICKER ─── */}
+      {showEmoji && (
+        <div className="shrink-0 border-t border-border bg-background p-2">
+          <div className="grid grid-cols-8 gap-1">
+            {EMOJIS.map((e, i) => (
+              <button key={i} onClick={() => insertEmoji(e)} className="rounded-lg p-1.5 text-xl transition hover:bg-accent tap-highlight-none">{e}</button>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Hidden file inputs */}
-        <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "image"); e.target.value = ""; }} />
-        <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "file"); e.target.value = ""; }} />
+      {/* Hidden file inputs */}
+      <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "image"); e.target.value = ""; }} />
+      <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" multiple className="hidden" onChange={(e) => { handleFiles(e.target.files, "file"); e.target.value = ""; }} />
 
-        {/* Input bar */}
+      {/* ─── COMPOSER — shrink-0, stays at bottom ─── */}
+      <div className="shrink-0 border-t border-border bg-background px-2 py-2" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
         <div className="flex items-end gap-1.5">
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading || pendingMedia.length >= 4} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-40 tap-highlight-none" aria-label="Attach file">
             {uploading ? <InlineSpinner className="h-5 w-5" /> : <Paperclip className="h-[19px] w-[19px]" />}
@@ -221,7 +193,7 @@ export function ConversationView({ id }: { id: string }) {
           <button onClick={handleSend} disabled={(!text.trim() && pendingMedia.length === 0) || sendMut.isPending} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed tap-highlight-none" aria-label="Send"><Send className="h-[18px] w-[18px]" /></button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -256,11 +228,12 @@ function ConvHeader({ other, back, nav, loading }: { other: any; back: () => voi
   );
 }
 
-// ─── Message bubble — with color variety and status indicators ───
-function MessageBubble({ message, grouped, otherAvatar, otherName, otherUsername }: { message: MessageItem; grouped: boolean; otherAvatar?: string | null; otherName: string; otherUsername: string }) {
+// ─── Message bubble — WhatsApp-style with media support ───
+function MessageBubble({ message, grouped, otherAvatar, otherName, otherUsername, onImageClick }: { message: MessageItem; grouped: boolean; otherAvatar?: string | null; otherName: string; otherUsername: string; onImageClick: (media: { url: string; type: "image" | "video" }[], index: number) => void }) {
   const { isMe, content, media } = message;
   const hasMedia = media && media.length > 0;
   const hasText = content.trim().length > 0;
+  const imageMedia = hasMedia ? media.filter(m => m.type === "image" || m.type === "video").map(m => ({ url: m.url, type: m.type as "image" | "video" })) : [];
 
   return (
     <div className={cn("flex w-full items-end gap-1.5", isMe ? "justify-end" : "justify-start", grouped ? "mt-0.5" : "mt-2")}>
@@ -271,9 +244,13 @@ function MessageBubble({ message, grouped, otherAvatar, otherName, otherUsername
           <div className={cn("grid gap-1 overflow-hidden rounded-2xl", media.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
             {media.map((m, i) => (
               <div key={i} className={cn("overflow-hidden rounded-xl", media.length === 1 ? "max-w-[260px]" : "")}>
-                {m.type === "image" ? <img src={m.url} alt="" className="max-h-[240px] w-full object-cover" loading="lazy" />
-                : m.type === "video" ? <video src={m.url} controls playsInline preload="metadata" className="max-h-[240px] w-full object-cover" />
-                : m.type === "audio" ? (
+                {m.type === "image" ? (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); onImageClick(imageMedia, imageMedia.findIndex(im => im.url === m.url)); }} className="h-full w-full p-0 border-0 bg-transparent" aria-label="View image">
+                    <img src={m.url} alt="" className="max-h-[240px] w-full object-cover" loading="lazy" />
+                  </button>
+                ) : m.type === "video" ? (
+                  <video src={m.url} controls playsInline preload="metadata" className="max-h-[240px] w-full object-cover" />
+                ) : m.type === "audio" ? (
                   <div className="flex items-center gap-2 rounded-xl bg-secondary p-3">
                     <button className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground"><Play className="h-4 w-4" /></button>
                     <div className="flex-1"><div className="h-1 rounded-full bg-border"><div className="h-1 w-1/3 rounded-full bg-primary" /></div><p className="mt-1 text-[11px] text-muted-foreground">{m.name ?? "Audio message"}</p></div>
@@ -282,6 +259,7 @@ function MessageBubble({ message, grouped, otherAvatar, otherName, otherUsername
                   <a href={m.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl bg-secondary p-3 transition hover:bg-accent">
                     <FileText className="h-8 w-8 text-muted-foreground" />
                     <div className="min-w-0 flex-1"><p className="truncate text-[13px] font-medium">{m.name ?? "File"}</p><p className="text-[11px] text-muted-foreground">Tap to download</p></div>
+                    <Download className="h-4 w-4 text-muted-foreground" />
                   </a>
                 )}
               </div>
