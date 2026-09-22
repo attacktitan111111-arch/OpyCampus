@@ -40,11 +40,18 @@ interface ComposeState {
   prefillText?: string;
 }
 
+interface LightboxState {
+  open: boolean;
+  media: { url: string; type: "image" | "video" }[];
+  initialIndex: number;
+}
+
 interface AppState {
   view: View;
   history: View[];
   compose: ComposeState;
   authOpen: "login" | "signup" | null;
+  lightbox: LightboxState;
   nav: (v: View) => void;
   back: () => void;
   canBack: () => boolean;
@@ -52,6 +59,8 @@ interface AppState {
   closeCompose: () => void;
   openAuth: (mode: "login" | "signup") => void;
   closeAuth: () => void;
+  openLightbox: (media: { url: string; type: "image" | "video" }[], initialIndex: number) => void;
+  closeLightbox: () => void;
 }
 
 // Flag to prevent popstate from re-pushing during programmatic back
@@ -82,6 +91,7 @@ export const useApp = create<AppState>((set, get) => ({
   history: [],
   compose: { open: false },
   authOpen: null,
+  lightbox: { open: false, media: [], initialIndex: 0 },
   nav: (v) => {
     const { view, history } = get();
     if (view.name === v.name && JSON.stringify(view) === JSON.stringify(v)) return;
@@ -126,6 +136,8 @@ export const useApp = create<AppState>((set, get) => ({
   closeCompose: () => set({ compose: { open: false, replyTo: null, quoteOf: null, scope: null, prefillText: "" } }),
   openAuth: (mode) => set({ authOpen: mode }),
   closeAuth: () => set({ authOpen: null }),
+  openLightbox: (media, initialIndex) => set({ lightbox: { open: true, media, initialIndex } }),
+  closeLightbox: () => set({ lightbox: { open: false, media: [], initialIndex: 0 } }),
 }));
 
 // Replace the initial history state with our home view

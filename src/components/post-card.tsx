@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useApp, useSession } from "@/lib/hooks";
 import type { Post } from "@/lib/hooks";
@@ -10,7 +9,6 @@ import { EngagementBar } from "./engagement-bar";
 import { InstitutionPill } from "./institution-pill";
 import { CommunityIcon } from "./custom-icons";
 import { QuotedPostBlock } from "./quoted-post-block";
-import { MediaLightbox } from "./media-lightbox";
 
 function renderContent(content: string) {
   const parts = content.split(/(\s+)/);
@@ -34,8 +32,7 @@ function renderContent(content: string) {
 }
 
 export function PostCard({ post }: { post: Post }) {
-  const { nav } = useApp();
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const { nav, openLightbox } = useApp();
 
   const onAuthorClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -54,11 +51,10 @@ export function PostCard({ post }: { post: Post }) {
     if (post.quoteOf) nav({ name: "post", postId: post.quoteOf.id });
   };
 
-  // Open the fullscreen media lightbox at the clicked index.
-  // stopPropagation so the article's onClick (navigate to post detail) doesn't fire.
-  const openLightbox = (e: React.MouseEvent, i: number) => {
+  // Open lightbox via store — renders at page.tsx level, completely outside this article
+  const openLightboxAt = (e: React.MouseEvent, i: number) => {
     e.stopPropagation();
-    setLightboxIndex(i);
+    openLightbox(post.media, i);
   };
 
   // Comment button navigates to the post detail (thread) page — like Threads app
@@ -171,7 +167,7 @@ export function PostCard({ post }: { post: Post }) {
                       src={m.url}
                       alt=""
                       loading="lazy"
-                      onClick={(e) => { e.stopPropagation(); openLightbox(e, i); }}
+                      onClick={(e) => { e.stopPropagation(); openLightboxAt(e, i); }}
                       className="h-full w-full cursor-pointer object-cover transition-opacity hover:opacity-95"
                     />
                   )}
@@ -204,14 +200,6 @@ export function PostCard({ post }: { post: Post }) {
           </div>
         </div>
       </div>
-
-      {/* Fullscreen media lightbox — rendered via portal to document.body, so no parent onClick interference */}
-      <MediaLightbox
-        media={post.media}
-        initialIndex={lightboxIndex ?? 0}
-        open={lightboxIndex !== null}
-        onClose={() => setLightboxIndex(null)}
-      />
     </article>
   );
 }

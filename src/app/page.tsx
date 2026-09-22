@@ -25,6 +25,7 @@ import { OnboardingView } from "@/views/onboarding-view";
 import { LegalView } from "@/views/legal-view";
 import { EmptyState, SkeletonFeed } from "@/components/view-helpers";
 import { SplashScreen, useSplashTimer } from "@/components/splash-screen";
+import { MediaLightbox } from "@/components/media-lightbox";
 import { Button } from "@/components/ui/button";
 import { GraduationCap } from "lucide-react";
 import { Loader2 } from "lucide-react";
@@ -103,7 +104,7 @@ const PUBLIC_VIEWS = new Set(["explore", "search", "tag", "institutions", "commu
 
 export default function Page() {
   const { data: session, isLoading } = useSession();
-  const { view, openAuth } = useApp();
+  const { view, openAuth, lightbox, closeLightbox } = useApp();
   const me = session?.user;
   const showSplash = useSplashTimer(900);
   const mounted = useMounted();
@@ -153,6 +154,14 @@ export default function Page() {
           </div>
         )}
       </AppShell>
+      {/* Media Lightbox — rendered at the TOP LEVEL, completely outside AppShell and all articles.
+          This ensures NO touch/click from the app behind can reach through. */}
+      <MediaLightbox
+        media={lightbox.media}
+        initialIndex={lightbox.initialIndex}
+        open={lightbox.open}
+        onClose={closeLightbox}
+      />
     </>
   );
 }
