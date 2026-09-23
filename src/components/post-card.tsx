@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useApp, useSession } from "@/lib/hooks";
 import type { Post } from "@/lib/hooks";
@@ -155,13 +156,7 @@ export function PostCard({ post }: { post: Post }) {
               {post.media.slice(0, 4).map((m, i) => (
                 <div key={i} className={cn("relative overflow-hidden bg-secondary", post.media.length === 1 ? "max-h-[460px]" : "aspect-square")}>
                   {m.type === "video" ? (
-                    <video
-                      src={m.url}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      className="h-full w-full object-cover"
-                    />
+                    <LazyVideo src={m.url} />
                   ) : (
                     <button
                       type="button"
@@ -207,5 +202,48 @@ export function PostCard({ post }: { post: Post }) {
         </div>
       </div>
     </article>
+  );
+}
+
+// ─── LazyVideo: only loads when visible, pauses when scrolled away ───
+function LazyVideo({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const video = videoRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible(true);
+          } else {
+            if (video && !video.paused) video.pause();
+            setVisible(false);
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative h-full w-full bg-secondary">
+      {visible ? (
+        <video ref={videoRef} src={src} controls playsInline preload="metadata" className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-secondary">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/40">
+            <svg viewBox="0 0 24 24" fill="white" className="h-6 w-6 ml-0.5"><path d="M8 5v14l11-7z" /></svg>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -503,8 +503,9 @@ export function useSignup() {
   return useMutation({
     mutationFn: (body: { email: string; username: string; name?: string; password: string; role?: "student" | "teacher" }) =>
       api<{ user: User }>("/api/auth/signup", { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: keys.session });
+    onSuccess: (data) => {
+      // Set session data immediately so the UI updates without waiting for refetch
+      qc.setQueryData(keys.session, { user: data.user });
       qc.invalidateQueries();
     },
   });
@@ -515,8 +516,9 @@ export function useLogin() {
   return useMutation({
     mutationFn: (body: { identifier: string; password: string }) =>
       api<{ user: User }>("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: keys.session });
+    onSuccess: (data) => {
+      // Set session data immediately so the UI updates without waiting for refetch
+      qc.setQueryData(keys.session, { user: data.user });
       qc.invalidateQueries();
     },
   });
