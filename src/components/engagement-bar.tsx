@@ -98,7 +98,7 @@ export function EngagementBar({ post, onComment }: { post: Post; onComment?: () 
         <Counter value={post._counts.replies} />
       </button>
 
-      {/* Views — third (display only) */}
+      {/* Views — third */}
       <button
         className="group flex items-center gap-1.5 rounded-full px-3 py-2 text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-violet-500 tap-highlight-none"
         aria-label="Views"
@@ -106,50 +106,6 @@ export function EngagementBar({ post, onComment }: { post: Post; onComment?: () 
         <Eye className="h-[20px] w-[20px]" />
         <Counter value={post._counts.likes + post._counts.replies + post._counts.reposts} />
       </button>
-
-      {/* 3-dot menu — right side */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            className="group flex items-center gap-1.5 rounded-full px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none"
-            aria-label="More options"
-          >
-            <MoreHorizontal className="h-[21px] w-[21px] transition-transform group-active:scale-90" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" side="top" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenuItem onClick={toggleRepost} className={cn(post.reposted && "text-emerald-500")}>
-            <Repeat2 className="mr-2 h-4 w-4" /> {post.reposted ? "Undo repost" : "Repost"}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => { /* quote handled by parent */ toast.info("Quote repost coming soon"); }}>
-            <Quote className="mr-2 h-4 w-4" /> Quote
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={toggleBookmark} className={cn(post.bookmarked && "text-amber-500")}>
-            <Bookmark className="mr-2 h-4 w-4" /> {post.bookmarked ? "Remove from saved" : "Save"}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={share}>
-            <Share2 className="mr-2 h-4 w-4" /> Share
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={copyText}>
-            <Copy className="mr-2 h-4 w-4" /> Copy text
-          </DropdownMenuItem>
-          {isOwn ? (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => delMut.mutate(post.id)}>
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </>
-          ) : (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive">
-                <Flag className="mr-2 h-4 w-4" /> Report
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   );
 }

@@ -268,10 +268,10 @@ export function PostDetailView({ postId }: { postId: string }) {
                             })
                           }
                           className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground tap-highlight-none press-down"
-                          aria-label={`Reply to ${r.author.name}`}
+                          aria-label={`Comment on ${r.author.name}`}
                         >
                           <MessageCircle className="h-4 w-4" />
-                          Reply
+                          Comment
                         </button>
                         <span className="text-[12px] text-muted-foreground/70">
                           {r._counts.likes > 0 && (

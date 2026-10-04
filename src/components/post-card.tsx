@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MoreHorizontal, Repeat2, Quote, Bookmark, Share2, Copy, Trash2, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useApp, useSession } from "@/lib/hooks";
+import { useApp, useSession, useToggleBookmark, useToggleRepost, useDeletePost } from "@/lib/hooks";
 import type { Post } from "@/lib/hooks";
 import { UserAvatar, VerifiedBadge } from "./user-avatar";
 import { RelativeTime } from "./relative-time";
@@ -10,6 +11,13 @@ import { EngagementBar } from "./engagement-bar";
 import { InstitutionPill } from "./institution-pill";
 import { CommunityIcon } from "./custom-icons";
 import { QuotedPostBlock } from "./quoted-post-block";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { toast } from "sonner";
 
 function renderContent(content: string) {
   const parts = content.split(/(\s+)/);
@@ -97,6 +105,10 @@ export function PostCard({ post }: { post: Post }) {
             <span className="shrink-0 text-[13px] text-muted-foreground hover:underline">
               <RelativeTime date={post.createdAt} />
             </span>
+            {/* 3-dot menu — top-right of post, opens bottom sheet */}
+            <div className="ml-auto">
+              <PostMenu post={post} />
+            </div>
           </div>
 
           {/* Replying to / context */}
@@ -205,29 +217,25 @@ export function PostCard({ post }: { post: Post }) {
   );
 }
 
-// ─── LazyVideo: only loads when visible, pauses when scrolled away ───
+// ─── LazyVideo: pauses when scrolled away, no unmount (prevents blinking) ───
 function LazyVideo({ src }: { src: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
     const video = videoRef.current;
-    if (!container) return;
+    if (!container || !video) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisible(true);
-          } else {
+          if (!entry.isIntersecting) {
             if (video && !video.paused) video.pause();
-            setVisible(false);
           }
         });
       },
-      { threshold: 0.3 }
+      { threshold: 0.1, rootMargin: "100px" }
     );
     observer.observe(container);
     return () => observer.disconnect();
@@ -235,15 +243,65 @@ function LazyVideo({ src }: { src: string }) {
 
   return (
     <div ref={containerRef} className="relative h-full w-full bg-secondary">
-      {visible ? (
-        <video ref={videoRef} src={src} controls playsInline preload="metadata" className="h-full w-full object-cover" />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-secondary">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/40">
-            <svg viewBox="0 0 24 24" fill="white" className="h-6 w-6 ml-0.5"><path d="M8 5v14l11-7z" /></svg>
-          </div>
-        </div>
-      )}
+      <video ref={videoRef} src={src} controls playsInline preload="metadata" className="h-full w-full object-cover" />
     </div>
+  );
+}
+
+// ─── PostMenu: 3-dot button in top-right, opens bottom sheet (like Twitter/Threads) ───
+function PostMenu({ post }: { post: Post }) {
+  const [open, setOpen] = useState(false);
+  const bmMut = useToggleBookmark();
+  const rpMut = useToggleRepost();
+  const delMut = useDeletePost();
+  const { data: session } = useSession();
+  const isOwn = session?.user?.id === post.author.id;
+
+  const toggleBookmark = (e: React.MouseEvent) => { e.stopPropagation(); bmMut.mutate({ id: post.id, bookmarked: post.bookmarked }); setOpen(false); };
+  const toggleRepost = (e: React.MouseEvent) => { e.stopPropagation(); rpMut.mutate({ id: post.id, reposted: post.reposted }); setOpen(false); };
+  const copyText = async (e: React.MouseEvent) => { e.stopPropagation(); await navigator.clipboard.writeText(post.content); toast.success("Copied post text"); setOpen(false); };
+  const share = async (e: React.MouseEvent) => { e.stopPropagation(); try { await navigator.clipboard.writeText(post.content); toast.success("Copied to clipboard"); } catch { /* ignore */ } setOpen(false); };
+
+  return (
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+        className="rounded-full p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground tap-highlight-none"
+        aria-label="More options"
+      >
+        <MoreHorizontal className="h-[18px] w-[18px]" />
+      </button>
+      <Sheet open={open} onOpenChange={(o) => { setOpen(o); if (!o) {} }}>
+        <SheetContent side="bottom" className="mx-auto w-full max-w-[640px] rounded-t-2xl border-border bg-background p-0">
+          <SheetHeader className="px-4 pt-3 pb-2">
+            <SheetTitle className="text-center text-[15px] font-semibold text-muted-foreground">Post options</SheetTitle>
+          </SheetHeader>
+          <div className="px-2 pb-6" onClick={(e) => e.stopPropagation()}>
+            <MenuItem icon={Repeat2} label={post.reposted ? "Undo repost" : "Repost"} onClick={toggleRepost} active={post.reposted} activeColor="text-emerald-500" />
+            <MenuItem icon={Quote} label="Quote" onClick={(e) => { e.stopPropagation(); toast.info("Quote coming soon"); setOpen(false); }} />
+            <MenuItem icon={Bookmark} label={post.bookmarked ? "Remove from saved" : "Save"} onClick={toggleBookmark} active={post.bookmarked} activeColor="text-amber-500" />
+            <MenuItem icon={Share2} label="Share" onClick={share} />
+            <MenuItem icon={Copy} label="Copy text" onClick={copyText} />
+            {isOwn ? (
+              <MenuItem icon={Trash2} label="Delete" onClick={(e) => { e.stopPropagation(); delMut.mutate(post.id); setOpen(false); }} activeColor="text-destructive" />
+            ) : (
+              <MenuItem icon={Flag} label="Report" onClick={(e) => { e.stopPropagation(); toast.success("Reported"); setOpen(false); }} activeColor="text-destructive" />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
+function MenuItem({ icon: Icon, label, onClick, active, activeColor }: { icon: any; label: string; onClick: (e: React.MouseEvent) => void; active?: boolean; activeColor?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn("flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-[16px] font-medium transition hover:bg-accent tap-highlight-none", active && activeColor)}
+    >
+      <Icon className="h-5 w-5" />
+      {label}
+    </button>
   );
 }
