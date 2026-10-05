@@ -14,8 +14,8 @@ export function Providers({ children }: { children: ReactNode }) {
           queries: {
             refetchOnWindowFocus: false,
             refetchOnMount: false,
-            staleTime: 120_000, // 2 minutes — cache aggressively for max speed
-            gcTime: 10 * 60 * 1000, // 10 min garbage collection
+            staleTime: 300_000, // 5 minutes — cache aggressively for speed
+            gcTime: 10 * 60 * 1000,
             retry: 0,
           },
         },

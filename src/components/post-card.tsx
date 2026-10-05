@@ -157,35 +157,47 @@ export function PostCard({ post }: { post: Post }) {
             </div>
           )}
 
-          {/* Media (images + videos) */}
+          {/* Media — Threads-style grid layout */}
           {post.media.length > 0 && (
             <div
               className={cn(
-                "mt-2.5 grid gap-1 overflow-hidden rounded-2xl border border-border bg-secondary/30",
+                "mt-2.5 grid gap-0.5 overflow-hidden rounded-xl",
                 post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"
               )}
+              onClick={(e) => e.stopPropagation()}
             >
-              {post.media.slice(0, 4).map((m, i) => (
-                <div key={i} className={cn("relative overflow-hidden bg-secondary", post.media.length === 1 ? "max-h-[460px]" : "aspect-square")}>
-                  {m.type === "video" ? (
-                    <LazyVideo src={m.url} />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); e.preventDefault(); openLightbox(post.media, i); }}
-                      className="h-full w-full cursor-pointer p-0 border-0 bg-transparent"
-                      aria-label={`View image ${i + 1}`}
-                    >
-                      <img
-                        src={m.url}
-                        alt=""
-                        loading="lazy"
-                        className="h-full w-full object-cover transition-opacity hover:opacity-95"
-                      />
-                    </button>
-                  )}
-                </div>
-              ))}
+              {post.media.slice(0, 4).map((m, i) => {
+                const isSingle = post.media.length === 1;
+                const isLastOfThree = post.media.length === 3 && i === 2;
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "relative overflow-hidden bg-secondary",
+                      isSingle ? "aspect-[4/3]" : "aspect-square",
+                      isLastOfThree && "col-span-2"
+                    )}
+                  >
+                    {m.type === "video" ? (
+                      <LazyVideo src={m.url} />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); e.preventDefault(); openLightbox(post.media, i); }}
+                        className="h-full w-full cursor-pointer p-0 border-0 bg-transparent"
+                        aria-label={`View image ${i + 1}`}
+                      >
+                        <img
+                          src={m.url}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -271,8 +283,14 @@ function PostMenu({ post }: { post: Post }) {
       >
         <MoreHorizontal className="h-[18px] w-[18px]" />
       </button>
-      <Sheet open={open} onOpenChange={(o) => { setOpen(o); if (!o) {} }}>
-        <SheetContent side="bottom" className="mx-auto w-full max-w-[640px] rounded-t-2xl border-border bg-background p-0">
+      <Sheet open={open} onOpenChange={(o) => { setOpen(o); }}>
+        <SheetContent
+          side="bottom"
+          className="mx-auto w-full max-w-[640px] rounded-t-2xl border-border bg-background p-0"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           <SheetHeader className="px-4 pt-3 pb-2">
             <SheetTitle className="text-center text-[15px] font-semibold text-muted-foreground">Post options</SheetTitle>
           </SheetHeader>
